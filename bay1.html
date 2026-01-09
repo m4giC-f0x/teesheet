@@ -202,6 +202,36 @@
         let isInternalUnlock = false;
         let isOccupied = false;
 
+        // Chime state tracking to prevent repeated triggers
+        let chimePlayed10 = false;
+        let chimePlayed5 = false;
+        let chimePlayed0 = false;
+
+        /**
+         * Audio Chime Implementation
+         */
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playChime(freq = 880) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(freq / 2, audioCtx.currentTime + 0.5);
+            
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.5);
+        }
+
         /**
          * Kiosk Protection Logic
          */
@@ -209,6 +239,9 @@
         let tapTimer = null;
 
         document.body.addEventListener('touchstart', (e) => {
+            // Browsers require a user interaction to enable audio
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
             if(document.getElementById('pass-modal').style.display === 'flex') return;
 
             tapCount++;
@@ -346,6 +379,10 @@
                 topLabel.innerText = "UP NEXT";
                 timerLabel.innerText = "Starts In";
                 setUIState('idle');
+                // Reset chime flags for next session
+                chimePlayed10 = false;
+                chimePlayed5 = false;
+                chimePlayed0 = false;
             }
             document.getElementById('event-title').innerText = title;
             const timeOpt = { hour: 'numeric', minute: '2-digit' };
@@ -356,6 +393,9 @@
         function handleNoEvents() {
             currentTargetDate = null;
             isOccupied = false;
+            chimePlayed10 = false;
+            chimePlayed5 = false;
+            chimePlayed0 = false;
             document.getElementById('top-label').innerText = "STATUS";
             document.getElementById('event-title').innerText = "Bay 1 Available";
             document.getElementById('timer').innerText = "FREE";
@@ -372,12 +412,25 @@
             
             if (diff <= 0) {
                 document.getElementById('timer').innerText = "00:00:00";
+                if (isOccupied && !chimePlayed0) {
+                    playChime(440); // Low chime for end of event
+                    chimePlayed0 = true;
+                }
                 fetchCalendar();
                 return;
             }
 
             if (isOccupied) {
-                // 10 minutes or less (600,000 milliseconds)
+                // Chime Logic
+                if (diff <= 300000 && !chimePlayed5) { // 5 Minutes
+                    playChime(1100); 
+                    chimePlayed5 = true;
+                } else if (diff <= 600000 && !chimePlayed10) { // 10 Minutes
+                    playChime(880);
+                    chimePlayed10 = true;
+                }
+
+                // UI Coloring Logic
                 if (diff <= 600000) {
                     setUIState('warning');
                 } else {
