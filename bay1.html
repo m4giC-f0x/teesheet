@@ -220,25 +220,20 @@
         let isFetching = false; 
         let lastFetchTime = 0;
         let isInternalUnlock = false;
-        
-        // Track chime states for 10 and 5 minutes
-        let chimePlayed10 = false; 
-        let chimePlayed5 = false;
-        
+        let chimePlayed = false; // Prevents chime from looping every second
         let isOccupied = false;
 
         /**
          * Audio Chime Implementation
          */
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        
-        function playChime(frequency = 880) {
+        function playChime() {
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(frequency, audioCtx.currentTime); 
-            osc.frequency.exponentialRampToValueAtTime(frequency / 2, audioCtx.currentTime + 0.5); 
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+            osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.5); // Fall to A4
             gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
             osc.connect(gain);
@@ -254,9 +249,6 @@
         let tapTimer = null;
 
         document.body.addEventListener('touchstart', (e) => {
-            // Resume audio context on any touch to ensure browser policies allow chimes
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-
             if(document.getElementById('pass-modal').style.display === 'flex') return;
             if(document.getElementById('relaunch-overlay').style.display === 'flex') return;
 
@@ -374,11 +366,11 @@
                 timerLabel.innerText = "Time Remaining";
             } else {
                 isOccupied = false;
-                chimePlayed10 = false; 
-                chimePlayed5 = false;
+                chimePlayed = false; // Reset for next event
                 currentTargetDate = start;
                 topLabel.innerText = "UP NEXT";
                 timerLabel.innerText = "Starts In";
+                // Ensure reset to default idle styles
                 setStyles('idle');
             }
 
@@ -412,8 +404,7 @@
         function handleNoEvents() {
             currentTargetDate = null;
             isOccupied = false;
-            chimePlayed10 = false;
-            chimePlayed5 = false;
+            chimePlayed = false;
             document.getElementById('top-label').innerText = "STATUS";
             document.getElementById('event-title').innerText = "Bay 1 Available";
             document.getElementById('timer').innerText = "FREE";
@@ -436,22 +427,15 @@
 
             // Logic for coloring and chime when occupied
             if (isOccupied) {
-                if (diff <= 300000) { // 5 minutes (300,000ms)
+                if (diff <= 600000) { // 10 minutes (600,000ms)
                     setStyles('warning');
-                    if (!chimePlayed5) {
-                        playChime(1100); // Slightly higher pitch for 5 min chime
-                        chimePlayed5 = true;
-                    }
-                } else if (diff <= 600000) { // 10 minutes (600,000ms)
-                    setStyles('warning');
-                    if (!chimePlayed10) {
-                        playChime(880);
-                        chimePlayed10 = true;
+                    if (!chimePlayed) {
+                        playChime();
+                        chimePlayed = true;
                     }
                 } else {
                     setStyles('occupied');
-                    chimePlayed10 = false; 
-                    chimePlayed5 = false;
+                    chimePlayed = false; 
                 }
             }
 
