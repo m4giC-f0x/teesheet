@@ -119,6 +119,36 @@
         .busy-text { color: var(--accent-active); }
         .busy-dot { background-color: var(--accent-active); box-shadow: 0 0 15px var(--accent-active); }
 
+        /* Custom Password Modal Styling */
+        #pass-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        #pass-modal input {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            color: white;
+            padding: 15px;
+            font-size: 1.5rem;
+            text-align: center;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        #pass-modal button {
+            background: var(--accent-active);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -141,6 +171,16 @@
         <div class="error-msg" id="error-box"></div>
     </div>
 
+    <!-- Hidden Password Modal -->
+    <div id="pass-modal">
+        <div class="label" style="color: white; margin-bottom: 20px;">Enter Admin PIN to Exit</div>
+        <input type="password" id="pin-input" placeholder="••••" maxlength="4" inputmode="numeric">
+        <div style="display: flex; gap: 10px;">
+            <button onclick="checkPin()">Submit</button>
+            <button onclick="closeModal()" style="background: #444;">Cancel</button>
+        </div>
+    </div>
+
     <script>
         // ==========================================
         // CONFIGURATION
@@ -148,6 +188,7 @@
         const API_KEY = 'AIzaSyDHxd0Ms4jv6qXcBu0Od9vm3B1IeniOtTo';
         const CALENDAR_ID = 'c_49229d9cac9c5624fe5d288c9356e492658134943d61459600373109dbf8379b@group.calendar.google.com';
         const SEARCH_TERM = "Bay 1"; 
+        const ADMIN_PIN = "1234"; // Set your kiosk exit pin here
         // ==========================================
 
         let currentTargetDate = null;
@@ -161,36 +202,64 @@
         let tapTimer = null;
 
         document.body.addEventListener('touchstart', (e) => {
+            // Ignore taps if modal is open
+            if(document.getElementById('pass-modal').style.display === 'flex') return;
+
             tapCount++;
-            
             if (tapTimer) clearTimeout(tapTimer);
             
             if (tapCount === 3) {
-                toggleFullscreen();
+                handleKioskToggle();
                 tapCount = 0;
             } else {
                 tapTimer = setTimeout(() => {
                     tapCount = 0;
-                }, 400); // 400ms window to complete triple tap
+                }, 400); 
             }
         });
 
-        function toggleFullscreen() {
-            const doc = window.document;
-            const docEl = doc.documentElement;
+        function isFullscreen() {
+            return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+        }
 
-            const requestFullScreen = docEl.requestFullscreen || docEl.webkitRequestFullScreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
-            const cancelFullScreen = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
-
-            if (!doc.fullscreenElement && !doc.mozFullScreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
-                if (requestFullScreen) {
-                    requestFullScreen.call(docEl);
-                }
+        function handleKioskToggle() {
+            if (!isFullscreen()) {
+                // Entering fullscreen - no password needed for security
+                enterFullscreen();
             } else {
-                if (cancelFullScreen) {
-                    cancelFullScreen.call(doc);
-                }
+                // Exiting fullscreen - prompt for password
+                document.getElementById('pass-modal').style.display = 'flex';
+                document.getElementById('pin-input').focus();
             }
+        }
+
+        function enterFullscreen() {
+            const docEl = document.documentElement;
+            const request = docEl.requestFullscreen || docEl.webkitRequestFullScreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+            if (request) request.call(docEl);
+        }
+
+        function exitFullscreen() {
+            const doc = window.document;
+            const cancel = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+            if (cancel) cancel.call(doc);
+        }
+
+        function checkPin() {
+            const input = document.getElementById('pin-input');
+            if (input.value === ADMIN_PIN) {
+                exitFullscreen();
+                closeModal();
+            } else {
+                input.value = "";
+                input.placeholder = "WRONG";
+                setTimeout(() => { input.placeholder = "••••"; }, 1000);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('pass-modal').style.display = 'none';
+            document.getElementById('pin-input').value = "";
         }
 
         /**
