@@ -44,7 +44,6 @@
             z-index: 1;
         }
 
-        /* When active, add a subtle red border */
         .dashboard-card.active-state {
             border-color: rgba(207, 102, 121, 0.3);
         }
@@ -114,21 +113,20 @@
         }
 
         .error-msg { color: #cf6679; font-size: 0.9rem; margin-top: 20px; display: none; }
-        
-        /* Helper class to switch colors when busy */
         .busy-text { color: var(--accent-active); }
         .busy-dot { background-color: var(--accent-active); box-shadow: 0 0 15px var(--accent-active); }
 
-        /* Custom Password Modal Styling */
+        /* Hidden Password Modal */
         #pass-modal {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85);
+            background: rgba(0,0,0,0.98);
             z-index: 100;
             justify-content: center;
             align-items: center;
             flex-direction: column;
+            backdrop-filter: blur(15px);
         }
         #pass-modal input {
             background: #2a2a2a;
@@ -144,10 +142,26 @@
             background: var(--accent-active);
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 15px 30px;
             border-radius: 8px;
             font-weight: bold;
             cursor: pointer;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Overlay for forced relaunch when blocked by browser */
+        #relaunch-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 99;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            text-align: center;
         }
     </style>
 </head>
@@ -155,30 +169,32 @@
 
     <div class="dashboard-card" id="main-card">
         <div class="label" id="top-label">Initializing...</div>
-        
         <div class="event-title" id="event-title">---</div>
-        
         <div class="timer-container">
             <div class="timer" id="timer">00:00:00</div>
             <div class="sub-timer" id="timer-label">Syncing</div>
         </div>
-
         <div class="event-time">
             <span class="status-dot" id="status-dot"></span>
             <span id="time-range">Establishing Connection...</span>
         </div>
-        
         <div class="error-msg" id="error-box"></div>
     </div>
 
-    <!-- Hidden Password Modal -->
+    <!-- Password Modal -->
     <div id="pass-modal">
-        <div class="label" style="color: white; margin-bottom: 20px;">Enter Admin PIN to Exit</div>
+        <div class="label" style="color: white; margin-bottom: 20px;">Kiosk Locked - Enter PIN</div>
         <input type="password" id="pin-input" placeholder="••••" maxlength="4" inputmode="numeric">
         <div style="display: flex; gap: 10px;">
-            <button onclick="checkPin()">Submit</button>
+            <button onclick="checkPin()">Unlock Kiosk</button>
             <button onclick="closeModal()" style="background: #444;">Cancel</button>
         </div>
+    </div>
+
+    <!-- Forced Relaunch Overlay -->
+    <div id="relaunch-overlay">
+        <div class="label" style="color: white; margin-bottom: 20px;">Kiosk Interrupted</div>
+        <button onclick="resumeKiosk()" style="background: var(--accent-idle); color: #000; padding: 20px 40px; border-radius: 12px; border: none; font-weight: bold; font-size: 1.2rem;">RESUME FULLSCREEN</button>
     </div>
 
     <script>
@@ -188,22 +204,23 @@
         const API_KEY = 'AIzaSyDHxd0Ms4jv6qXcBu0Od9vm3B1IeniOtTo';
         const CALENDAR_ID = 'c_49229d9cac9c5624fe5d288c9356e492658134943d61459600373109dbf8379b@group.calendar.google.com';
         const SEARCH_TERM = "Bay 1"; 
-        const ADMIN_PIN = "1234"; // Set your kiosk exit pin here
+        const ADMIN_PIN = "1234"; 
         // ==========================================
 
         let currentTargetDate = null;
         let isFetching = false; 
         let lastFetchTime = 0;
+        let isInternalUnlock = false;
 
         /**
-         * Triple Tap Logic for Kiosk Fullscreen
+         * Kiosk Logic
          */
         let tapCount = 0;
         let tapTimer = null;
 
         document.body.addEventListener('touchstart', (e) => {
-            // Ignore taps if modal is open
             if(document.getElementById('pass-modal').style.display === 'flex') return;
+            if(document.getElementById('relaunch-overlay').style.display === 'flex') return;
 
             tapCount++;
             if (tapTimer) clearTimeout(tapTimer);
@@ -212,22 +229,40 @@
                 handleKioskToggle();
                 tapCount = 0;
             } else {
-                tapTimer = setTimeout(() => {
-                    tapCount = 0;
-                }, 400); 
+                tapTimer = setTimeout(() => { tapCount = 0; }, 400); 
             }
         });
+
+        // Listen for exit
+        const fsEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
+        fsEvents.forEach(evt => document.addEventListener(evt, handleExitDetection));
+
+        async function handleExitDetection() {
+            if (!isFullscreen() && !isInternalUnlock) {
+                // User swiped out. First try to relaunch automatically.
+                try {
+                    // Most modern browsers will block this if it isn't triggered by a click/tap
+                    await enterFullscreen();
+                } catch (err) {
+                    // If blocked, show the relaunch overlay to force a user interaction
+                    document.getElementById('relaunch-overlay').style.display = 'flex';
+                }
+            }
+        }
 
         function isFullscreen() {
             return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
         }
 
+        function resumeKiosk() {
+            document.getElementById('relaunch-overlay').style.display = 'none';
+            enterFullscreen();
+        }
+
         function handleKioskToggle() {
             if (!isFullscreen()) {
-                // Entering fullscreen - no password needed for security
                 enterFullscreen();
             } else {
-                // Exiting fullscreen - prompt for password
                 document.getElementById('pass-modal').style.display = 'flex';
                 document.getElementById('pin-input').focus();
             }
@@ -236,20 +271,21 @@
         function enterFullscreen() {
             const docEl = document.documentElement;
             const request = docEl.requestFullscreen || docEl.webkitRequestFullScreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
-            if (request) request.call(docEl);
-        }
-
-        function exitFullscreen() {
-            const doc = window.document;
-            const cancel = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
-            if (cancel) cancel.call(doc);
+            if (request) return request.call(docEl);
+            return Promise.reject('Fullscreen API not supported');
         }
 
         function checkPin() {
             const input = document.getElementById('pin-input');
             if (input.value === ADMIN_PIN) {
-                exitFullscreen();
+                isInternalUnlock = true;
                 closeModal();
+                // Admin choice to exit - we DON'T re-fullscreen here
+                const doc = window.document;
+                const cancel = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+                if (cancel) cancel.call(doc);
+                
+                setTimeout(() => { isInternalUnlock = false; }, 2000);
             } else {
                 input.value = "";
                 input.placeholder = "WRONG";
@@ -263,15 +299,12 @@
         }
 
         /**
-         * Fetches events and determines if the current time 
-         * falls within an event or is approaching one.
+         * API Logic
          */
         async function fetchCalendar() {
             if (isFetching) return;
-            
             const nowTime = Date.now();
             if (nowTime - lastFetchTime < 2000) return;
-            
             isFetching = true;
             lastFetchTime = nowTime;
 
@@ -281,27 +314,12 @@
             try {
                 const response = await fetch(url);
                 const data = await response.json();
-
                 if (data.error) throw new Error(data.error.message);
-
-                let validEvent = null;
-                if (data.items) {
-                    validEvent = data.items.find(event => 
-                        (event.summary || "").toLowerCase().includes(SEARCH_TERM.toLowerCase())
-                    );
-                }
-
-                if (validEvent) {
-                    processEvent(validEvent);
-                } else {
-                    handleNoEvents();
-                }
-                
+                let validEvent = data.items ? data.items.find(event => (event.summary || "").toLowerCase().includes(SEARCH_TERM.toLowerCase())) : null;
+                if (validEvent) processEvent(validEvent);
+                else handleNoEvents();
                 document.getElementById('error-box').style.display = 'none';
-
             } catch (error) {
-                console.error("API Error:", error);
-                document.getElementById('error-box').innerText = "Network Error: Retrying...";
                 document.getElementById('error-box').style.display = 'block';
             } finally {
                 isFetching = false;
@@ -313,7 +331,6 @@
             let start = new Date(event.start.dateTime || event.start.date);
             let end = new Date(event.end.dateTime || event.end.date);
             const now = new Date();
-
             const topLabel = document.getElementById('top-label');
             const timerLabel = document.getElementById('timer-label');
             const statusDot = document.getElementById('status-dot');
@@ -322,29 +339,22 @@
 
             if (now >= start && now < end) {
                 currentTargetDate = end;
-                
                 topLabel.innerText = "CURRENTLY OCCUPIED";
                 timerLabel.innerText = "Time Remaining";
                 statusDot.classList.add('busy-dot');
                 mainCard.classList.add('active-state');
                 timerDisplay.style.color = "var(--accent-active)";
-            } 
-            else {
+            } else {
                 currentTargetDate = start;
-
                 topLabel.innerText = "UP NEXT";
                 timerLabel.innerText = "Starts In";
                 statusDot.classList.remove('busy-dot');
                 mainCard.classList.remove('active-state');
                 timerDisplay.style.color = "var(--text-main)";
             }
-
             document.getElementById('event-title').innerText = title;
-
             const timeOpt = { hour: 'numeric', minute: '2-digit' };
-            document.getElementById('time-range').innerText = 
-                `${start.toLocaleTimeString([], timeOpt)} - ${end.toLocaleTimeString([], timeOpt)}`;
-
+            document.getElementById('time-range').innerText = `${start.toLocaleTimeString([], timeOpt)} - ${end.toLocaleTimeString([], timeOpt)}`;
             updateTimer();
         }
 
@@ -362,25 +372,17 @@
 
         function updateTimer() {
             if (!currentTargetDate) return;
-
             const now = new Date();
             const diff = currentTargetDate - now;
-
             if (diff <= 0) {
                 document.getElementById('timer').innerText = "00:00:00";
                 fetchCalendar();
                 return;
             }
-
             const hours = Math.floor(diff / (1000 * 60 * 60));
             const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-            const h = hours.toString().padStart(2, '0');
-            const m = minutes.toString().padStart(2, '0');
-            const s = seconds.toString().padStart(2, '0');
-
-            document.getElementById('timer').innerText = `${h}:${m}:${s}`;
+            document.getElementById('timer').innerText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         }
 
         fetchCalendar();
