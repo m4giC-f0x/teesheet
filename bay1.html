@@ -24,7 +24,7 @@
             align-items: center;
             height: 100vh;
             margin: 0;
-            padding: 10px; /* Reduced body padding */
+            padding: 0; /* Removed padding to maximize space */
             box-sizing: border-box;
             overflow: hidden;
             position: relative;
@@ -35,28 +35,28 @@
 
         .dashboard-card {
             background-color: var(--card-bg);
-            padding: 25px 40px; /* Reduced vertical padding from 40px to 25px */
+            padding: 30px 50px; 
             border-radius: 24px;
             box-shadow: 0 15px 50px rgba(0,0,0,0.5);
             text-align: center;
-            width: 100%;
-            max-width: 650px;
+            width: 95%; /* Increased from 100% with max-width */
+            max-width: 850px; /* Increased from 650px to fill more screen */
             transition: border-color 0.5s, transform 0.3s;
             border: 2px solid transparent;
             z-index: 1;
         }
 
         .logo-container {
-            margin-top: -10px; /* Slight negative margin to pull logo up */
-            margin-bottom: 10px; /* Reduced from 30px */
+            margin-top: -10px;
+            margin-bottom: 15px;
             display: flex;
             justify-content: center;
-            min-height: auto; /* Removed fixed min-height to allow compression */
+            min-height: auto;
         }
 
         .logo-container img {
-            max-height: 160px; 
-            max-width: 400px;  
+            max-height: 180px; /* Slightly larger logo */
+            max-width: 450px;  
             object-fit: contain;
         }
 
@@ -70,18 +70,18 @@
         }
 
         .label {
-            font-size: 1rem;
+            font-size: 1.1rem; /* Slightly larger */
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 4px;
+            letter-spacing: 5px;
             color: var(--text-muted);
-            margin-bottom: 10px; /* Reduced from 15px */
+            margin-bottom: 10px;
         }
 
         .event-title {
-            font-size: 2.8rem;
+            font-size: 3.5rem; /* Larger font for event titles */
             font-weight: 700;
-            margin: 0 0 10px 0;
+            margin: 0 0 15px 0;
             line-height: 1.1;
             color: #ffffff;
             white-space: nowrap;
@@ -91,41 +91,41 @@
 
         .timer-container {
             background: rgba(0,0,0,0.2);
-            border-radius: 16px;
-            padding: 20px; /* Reduced from 25px */
-            margin: 20px 0; /* Reduced from 30px */
+            border-radius: 20px;
+            padding: 30px; /* More internal padding */
+            margin: 25px 0; 
             border: 1px solid rgba(255,255,255,0.05);
         }
 
         .timer {
-            font-size: 6rem;
+            font-size: 8rem; /* Significant increase for fullscreen impact */
             font-weight: 700;
             font-variant-numeric: tabular-nums;
-            letter-spacing: -3px;
+            letter-spacing: -4px;
             line-height: 1;
             transition: color 0.3s;
         }
 
         .sub-timer {
-            margin-top: 5px;
-            font-size: 1rem;
+            margin-top: 10px;
+            font-size: 1.2rem;
             color: var(--text-muted);
-            letter-spacing: 2px;
+            letter-spacing: 3px;
             text-transform: uppercase;
         }
 
         .event-time {
-            font-size: 1.2rem;
+            font-size: 1.5rem; /* Larger footer text */
             color: var(--text-muted);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            gap: 15px;
         }
 
         .status-dot {
-            height: 12px;
-            width: 12px;
+            height: 16px;
+            width: 16px;
             background-color: var(--accent-idle);
             border-radius: 50%;
             display: inline-block;
