@@ -11,7 +11,8 @@
             --text-main: #ffffff;
             --text-muted: #a0a0a0;
             --accent-idle: #03dac6; /* Teal for "Next up" */
-            --accent-active: #cf6679; /* Red for "Occupied/Busy" */
+            --accent-occupied: #96cb39; /* Your specific Green */
+            --accent-warning: #cf6679; /* Red for 10min warning */
         }
 
         body {
@@ -44,8 +45,14 @@
             z-index: 1;
         }
 
-        .dashboard-card.active-state {
-            border-color: rgba(207, 102, 121, 0.3);
+        /* Occupied State - Green */
+        .dashboard-card.occupied-state {
+            border-color: var(--accent-occupied);
+        }
+
+        /* Warning State - Red */
+        .dashboard-card.warning-state {
+            border-color: var(--accent-warning);
         }
 
         .label {
@@ -113,8 +120,10 @@
         }
 
         .error-msg { color: #cf6679; font-size: 0.9rem; margin-top: 20px; display: none; }
-        .busy-text { color: var(--accent-active); }
-        .busy-dot { background-color: var(--accent-active); box-shadow: 0 0 15px var(--accent-active); }
+        
+        /* Helper classes for dynamic coloring */
+        .occupied-dot { background-color: var(--accent-occupied); box-shadow: 0 0 15px var(--accent-occupied); }
+        .warning-dot { background-color: var(--accent-warning); box-shadow: 0 0 15px var(--accent-warning); }
 
         /* Hidden Password Modal */
         #pass-modal {
@@ -139,7 +148,7 @@
             margin-bottom: 20px;
         }
         #pass-modal button {
-            background: var(--accent-active);
+            background: var(--accent-warning);
             color: white;
             border: none;
             padding: 15px 30px;
@@ -211,6 +220,32 @@
         let isFetching = false; 
         let lastFetchTime = 0;
         let isInternalUnlock = false;
+        
+        // Track chime states for 10 and 5 minutes
+        let chimePlayed10 = false; 
+        let chimePlayed5 = false;
+        
+        let isOccupied = false;
+
+        /**
+         * Audio Chime Implementation
+         */
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playChime(frequency = 880) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(frequency, audioCtx.currentTime); 
+            osc.frequency.exponentialRampToValueAtTime(frequency / 2, audioCtx.currentTime + 0.5); 
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.5);
+        }
 
         /**
          * Kiosk Logic
@@ -219,6 +254,9 @@
         let tapTimer = null;
 
         document.body.addEventListener('touchstart', (e) => {
+            // Resume audio context on any touch to ensure browser policies allow chimes
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
             if(document.getElementById('pass-modal').style.display === 'flex') return;
             if(document.getElementById('relaunch-overlay').style.display === 'flex') return;
 
@@ -233,18 +271,14 @@
             }
         });
 
-        // Listen for exit
         const fsEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
         fsEvents.forEach(evt => document.addEventListener(evt, handleExitDetection));
 
         async function handleExitDetection() {
             if (!isFullscreen() && !isInternalUnlock) {
-                // User swiped out. First try to relaunch automatically.
                 try {
-                    // Most modern browsers will block this if it isn't triggered by a click/tap
                     await enterFullscreen();
                 } catch (err) {
-                    // If blocked, show the relaunch overlay to force a user interaction
                     document.getElementById('relaunch-overlay').style.display = 'flex';
                 }
             }
@@ -280,11 +314,9 @@
             if (input.value === ADMIN_PIN) {
                 isInternalUnlock = true;
                 closeModal();
-                // Admin choice to exit - we DON'T re-fullscreen here
                 const doc = window.document;
                 const cancel = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
                 if (cancel) cancel.call(doc);
-                
                 setTimeout(() => { isInternalUnlock = false; }, 2000);
             } else {
                 input.value = "";
@@ -331,54 +363,98 @@
             let start = new Date(event.start.dateTime || event.start.date);
             let end = new Date(event.end.dateTime || event.end.date);
             const now = new Date();
+            
             const topLabel = document.getElementById('top-label');
             const timerLabel = document.getElementById('timer-label');
-            const statusDot = document.getElementById('status-dot');
-            const mainCard = document.getElementById('main-card');
-            const timerDisplay = document.getElementById('timer');
-
+            
             if (now >= start && now < end) {
+                isOccupied = true;
                 currentTargetDate = end;
                 topLabel.innerText = "CURRENTLY OCCUPIED";
                 timerLabel.innerText = "Time Remaining";
-                statusDot.classList.add('busy-dot');
-                mainCard.classList.add('active-state');
-                timerDisplay.style.color = "var(--accent-active)";
             } else {
+                isOccupied = false;
+                chimePlayed10 = false; 
+                chimePlayed5 = false;
                 currentTargetDate = start;
                 topLabel.innerText = "UP NEXT";
                 timerLabel.innerText = "Starts In";
-                statusDot.classList.remove('busy-dot');
-                mainCard.classList.remove('active-state');
-                timerDisplay.style.color = "var(--text-main)";
+                setStyles('idle');
             }
+
             document.getElementById('event-title').innerText = title;
             const timeOpt = { hour: 'numeric', minute: '2-digit' };
             document.getElementById('time-range').innerText = `${start.toLocaleTimeString([], timeOpt)} - ${end.toLocaleTimeString([], timeOpt)}`;
             updateTimer();
         }
 
+        function setStyles(state) {
+            const mainCard = document.getElementById('main-card');
+            const statusDot = document.getElementById('status-dot');
+            const timer = document.getElementById('timer');
+
+            mainCard.classList.remove('occupied-state', 'warning-state');
+            statusDot.classList.remove('occupied-dot', 'warning-dot');
+
+            if (state === 'occupied') {
+                mainCard.classList.add('occupied-state');
+                statusDot.classList.add('occupied-dot');
+                timer.style.color = 'var(--accent-occupied)';
+            } else if (state === 'warning') {
+                mainCard.classList.add('warning-state');
+                statusDot.classList.add('warning-dot');
+                timer.style.color = 'var(--accent-warning)';
+            } else {
+                timer.style.color = 'var(--text-main)';
+            }
+        }
+
         function handleNoEvents() {
             currentTargetDate = null;
+            isOccupied = false;
+            chimePlayed10 = false;
+            chimePlayed5 = false;
             document.getElementById('top-label').innerText = "STATUS";
             document.getElementById('event-title').innerText = "Bay 1 Available";
             document.getElementById('timer').innerText = "FREE";
             document.getElementById('timer').style.color = "var(--accent-idle)";
             document.getElementById('timer-label').innerText = "No upcoming events";
             document.getElementById('time-range').innerText = "Calendar is clear";
-            document.getElementById('status-dot').classList.remove('busy-dot');
-            document.getElementById('main-card').classList.remove('active-state');
+            setStyles('idle');
         }
 
         function updateTimer() {
             if (!currentTargetDate) return;
             const now = new Date();
             const diff = currentTargetDate - now;
+
             if (diff <= 0) {
                 document.getElementById('timer').innerText = "00:00:00";
                 fetchCalendar();
                 return;
             }
+
+            // Logic for coloring and chime when occupied
+            if (isOccupied) {
+                if (diff <= 300000) { // 5 minutes (300,000ms)
+                    setStyles('warning');
+                    if (!chimePlayed5) {
+                        playChime(1100); // Slightly higher pitch for 5 min chime
+                        chimePlayed5 = true;
+                    }
+                } else if (diff <= 600000) { // 10 minutes (600,000ms)
+                    setStyles('warning');
+                    if (!chimePlayed10) {
+                        playChime(880);
+                        chimePlayed10 = true;
+                    }
+                } else {
+                    setStyles('occupied');
+                    chimePlayed10 = false; 
+                    chimePlayed5 = false;
+                }
+            }
+
             const hours = Math.floor(diff / (1000 * 60 * 60));
             const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((diff % (1000 * 60)) / 1000);
