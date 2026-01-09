@@ -10,8 +10,9 @@
             --card-bg: #1e1e1e;
             --text-main: #ffffff;
             --text-muted: #a0a0a0;
-            --accent-idle: #03dac6; /* Teal for "Next up" */
-            --accent-active: #cf6679; /* Red for "Occupied/Busy" */
+            --accent-idle: #03dac6; /* Teal for "Available" */
+            --accent-occupied: #96cb39; /* Your specific Green */
+            --accent-warning: #cf6679; /* Red for warning */
         }
 
         body {
@@ -44,9 +45,13 @@
             z-index: 1;
         }
 
-        /* When active, add a subtle red border */
-        .dashboard-card.active-state {
-            border-color: rgba(207, 102, 121, 0.3);
+        /* Specific border colors for states */
+        .dashboard-card.occupied-state {
+            border-color: var(--accent-occupied);
+        }
+
+        .dashboard-card.warning-state {
+            border-color: var(--accent-warning);
         }
 
         .label {
@@ -115,9 +120,9 @@
 
         .error-msg { color: #cf6679; font-size: 0.9rem; margin-top: 20px; display: none; }
         
-        /* Helper class to switch colors when busy */
-        .busy-text { color: var(--accent-active); }
-        .busy-dot { background-color: var(--accent-active); box-shadow: 0 0 15px var(--accent-active); }
+        /* State Helper Classes */
+        .occupied-dot { background-color: var(--accent-occupied); box-shadow: 0 0 15px var(--accent-occupied); }
+        .warning-dot { background-color: var(--accent-warning); box-shadow: 0 0 15px var(--accent-warning); }
 
         /* Custom Password Modal Styling */
         #pass-modal {
@@ -142,7 +147,7 @@
             margin-bottom: 20px;
         }
         #pass-modal button {
-            background: var(--accent-active);
+            background: var(--accent-warning);
             color: white;
             border: none;
             padding: 10px 20px;
@@ -195,6 +200,7 @@
         let isFetching = false; 
         let lastFetchTime = 0;
         let isInternalUnlock = false;
+        let isOccupied = false;
 
         /**
          * Kiosk Protection Logic
@@ -218,15 +224,12 @@
             }
         });
 
-        // Detect when fullscreen is exited (e.g., via swipe down)
-        document.addEventListener('fullscreenchange', handleExitDetection);
-        document.addEventListener('webkitfullscreenchange', handleExitDetection);
-        document.addEventListener('mozfullscreenchange', handleExitDetection);
-        document.addEventListener('MSFullscreenChange', handleExitDetection);
+        // Detect when fullscreen is exited
+        const fsEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
+        fsEvents.forEach(evt => document.addEventListener(evt, handleExitDetection));
 
         function handleExitDetection() {
             if (!isFullscreen() && !isInternalUnlock) {
-                // If we aren't in fullscreen and this wasn't an intentional admin exit, show lock screen
                 document.getElementById('pass-modal').style.display = 'flex';
                 document.getElementById('pin-input').focus();
             }
@@ -240,7 +243,6 @@
             if (!isFullscreen()) {
                 enterFullscreen();
             } else {
-                // Manually triggering password prompt via triple-tap
                 document.getElementById('pass-modal').style.display = 'flex';
                 document.getElementById('pin-input').focus();
             }
@@ -258,7 +260,6 @@
                 isInternalUnlock = true;
                 closeModal();
                 enterFullscreen();
-                // Reset internal flag after a brief delay
                 setTimeout(() => { isInternalUnlock = false; }, 1000);
             } else {
                 input.value = "";
@@ -304,6 +305,28 @@
             }
         }
 
+        function setUIState(state) {
+            const mainCard = document.getElementById('main-card');
+            const statusDot = document.getElementById('status-dot');
+            const timerDisplay = document.getElementById('timer');
+
+            mainCard.classList.remove('occupied-state', 'warning-state');
+            statusDot.classList.remove('occupied-dot', 'warning-dot');
+
+            if (state === 'occupied') {
+                mainCard.classList.add('occupied-state');
+                statusDot.classList.add('occupied-dot');
+                timerDisplay.style.color = "var(--accent-occupied)";
+            } else if (state === 'warning') {
+                mainCard.classList.add('warning-state');
+                statusDot.classList.add('warning-dot');
+                timerDisplay.style.color = "var(--accent-warning)";
+            } else {
+                // Idle or default
+                timerDisplay.style.color = "var(--text-main)";
+            }
+        }
+
         function processEvent(event) {
             const title = event.summary;
             let start = new Date(event.start.dateTime || event.start.date);
@@ -311,24 +334,18 @@
             const now = new Date();
             const topLabel = document.getElementById('top-label');
             const timerLabel = document.getElementById('timer-label');
-            const statusDot = document.getElementById('status-dot');
-            const mainCard = document.getElementById('main-card');
-            const timerDisplay = document.getElementById('timer');
 
             if (now >= start && now < end) {
+                isOccupied = true;
                 currentTargetDate = end;
                 topLabel.innerText = "CURRENTLY OCCUPIED";
                 timerLabel.innerText = "Time Remaining";
-                statusDot.classList.add('busy-dot');
-                mainCard.classList.add('active-state');
-                timerDisplay.style.color = "var(--accent-active)";
             } else {
+                isOccupied = false;
                 currentTargetDate = start;
                 topLabel.innerText = "UP NEXT";
                 timerLabel.innerText = "Starts In";
-                statusDot.classList.remove('busy-dot');
-                mainCard.classList.remove('active-state');
-                timerDisplay.style.color = "var(--text-main)";
+                setUIState('idle');
             }
             document.getElementById('event-title').innerText = title;
             const timeOpt = { hour: 'numeric', minute: '2-digit' };
@@ -338,25 +355,36 @@
 
         function handleNoEvents() {
             currentTargetDate = null;
+            isOccupied = false;
             document.getElementById('top-label').innerText = "STATUS";
             document.getElementById('event-title').innerText = "Bay 1 Available";
             document.getElementById('timer').innerText = "FREE";
             document.getElementById('timer').style.color = "var(--accent-idle)";
             document.getElementById('timer-label').innerText = "No upcoming events";
             document.getElementById('time-range').innerText = "Calendar is clear";
-            document.getElementById('status-dot').classList.remove('busy-dot');
-            document.getElementById('main-card').classList.remove('active-state');
+            setUIState('idle');
         }
 
         function updateTimer() {
             if (!currentTargetDate) return;
             const now = new Date();
             const diff = currentTargetDate - now;
+            
             if (diff <= 0) {
                 document.getElementById('timer').innerText = "00:00:00";
                 fetchCalendar();
                 return;
             }
+
+            if (isOccupied) {
+                // 10 minutes or less (600,000 milliseconds)
+                if (diff <= 600000) {
+                    setUIState('warning');
+                } else {
+                    setUIState('occupied');
+                }
+            }
+
             const hours = Math.floor(diff / (1000 * 60 * 60));
             const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((diff % (1000 * 60)) / 1000);
