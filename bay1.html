@@ -24,9 +24,10 @@
             align-items: center;
             height: 100vh;
             margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
             overflow: hidden;
             position: relative;
-            /* Prevent default touch behaviors that might interfere with kiosk mode */
             touch-action: manipulation;
             user-select: none;
             -webkit-user-select: none;
@@ -43,6 +44,18 @@
             transition: border-color 0.5s, transform 0.3s;
             border: 2px solid transparent;
             z-index: 1;
+        }
+
+        .logo-container {
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .logo-container img {
+            max-height: 80px; /* Adjust based on your logo design */
+            max-width: 200px;
+            object-fit: contain;
         }
 
         /* Specific border colors for states */
@@ -160,6 +173,11 @@
 <body>
 
     <div class="dashboard-card" id="main-card">
+        <!-- Logo Section: Replace 'https://m4gic-f0x.github.io/teesheet/b9.png' with your link -->
+        <div class="logo-container">
+            <img src="https://via.placeholder.com/200x80/1e1e1e/ffffff?text=LOGO" id="app-logo" alt="Logo">
+        </div>
+
         <div class="label" id="top-label">Initializing...</div>
         
         <div class="event-title" id="event-title">---</div>
