@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bay 1 Monitor</title>
     <style>
         :root {
@@ -24,6 +24,11 @@
             height: 100vh;
             margin: 0;
             overflow: hidden;
+            position: relative;
+            /* Prevent default touch behaviors that might interfere with kiosk mode */
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         .dashboard-card {
@@ -34,8 +39,9 @@
             text-align: center;
             width: 100%;
             max-width: 650px;
-            transition: border-color 0.5s;
+            transition: border-color 0.5s, transform 0.3s;
             border: 2px solid transparent;
+            z-index: 1;
         }
 
         /* When active, add a subtle red border */
@@ -77,6 +83,7 @@
             font-variant-numeric: tabular-nums;
             letter-spacing: -3px;
             line-height: 1;
+            transition: color 0.3s;
         }
 
         .sub-timer {
@@ -103,6 +110,7 @@
             border-radius: 50%;
             display: inline-block;
             box-shadow: 0 0 10px var(--accent-idle);
+            transition: background-color 0.3s, box-shadow 0.3s;
         }
 
         .error-msg { color: #cf6679; font-size: 0.9rem; margin-top: 20px; display: none; }
@@ -116,18 +124,18 @@
 <body>
 
     <div class="dashboard-card" id="main-card">
-        <div class="label" id="top-label">Loading...</div>
+        <div class="label" id="top-label">Initializing...</div>
         
         <div class="event-title" id="event-title">---</div>
         
         <div class="timer-container">
-            <div class="timer" id="timer">--:--:--</div>
+            <div class="timer" id="timer">00:00:00</div>
             <div class="sub-timer" id="timer-label">Syncing</div>
         </div>
 
         <div class="event-time">
             <span class="status-dot" id="status-dot"></span>
-            <span id="time-range">Please wait...</span>
+            <span id="time-range">Establishing Connection...</span>
         </div>
         
         <div class="error-msg" id="error-box"></div>
@@ -143,17 +151,63 @@
         // ==========================================
 
         let currentTargetDate = null;
-        let isEventActive = false; // Is the event happening NOW?
-        let isFetching = false;    // Prevents double-fetching
+        let isFetching = false; 
+        let lastFetchTime = 0;
 
+        /**
+         * Triple Tap Logic for Kiosk Fullscreen
+         */
+        let tapCount = 0;
+        let tapTimer = null;
+
+        document.body.addEventListener('touchstart', (e) => {
+            tapCount++;
+            
+            if (tapTimer) clearTimeout(tapTimer);
+            
+            if (tapCount === 3) {
+                toggleFullscreen();
+                tapCount = 0;
+            } else {
+                tapTimer = setTimeout(() => {
+                    tapCount = 0;
+                }, 400); // 400ms window to complete triple tap
+            }
+        });
+
+        function toggleFullscreen() {
+            const doc = window.document;
+            const docEl = doc.documentElement;
+
+            const requestFullScreen = docEl.requestFullscreen || docEl.webkitRequestFullScreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+            const cancelFullScreen = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+
+            if (!doc.fullscreenElement && !doc.mozFullScreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
+                if (requestFullScreen) {
+                    requestFullScreen.call(docEl);
+                }
+            } else {
+                if (cancelFullScreen) {
+                    cancelFullScreen.call(doc);
+                }
+            }
+        }
+
+        /**
+         * Fetches events and determines if the current time 
+         * falls within an event or is approaching one.
+         */
         async function fetchCalendar() {
             if (isFetching) return;
-            isFetching = true;
-
-            const now = new Date().toISOString();
             
-            // "timeMin=now" will return events that are currently in progress OR in the future.
-            const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?key=${API_KEY}&timeMin=${now}&singleEvents=true&orderBy=startTime&q=${encodeURIComponent(SEARCH_TERM)}&maxResults=10`;
+            const nowTime = Date.now();
+            if (nowTime - lastFetchTime < 2000) return;
+            
+            isFetching = true;
+            lastFetchTime = nowTime;
+
+            const nowISO = new Date().toISOString();
+            const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?key=${API_KEY}&timeMin=${nowISO}&singleEvents=true&orderBy=startTime&q=${encodeURIComponent(SEARCH_TERM)}&maxResults=5`;
 
             try {
                 const response = await fetch(url);
@@ -161,7 +215,6 @@
 
                 if (data.error) throw new Error(data.error.message);
 
-                // 1. Find the first event that matches "Bay 1" in the title
                 let validEvent = null;
                 if (data.items) {
                     validEvent = data.items.find(event => 
@@ -179,12 +232,8 @@
 
             } catch (error) {
                 console.error("API Error:", error);
-                // Don't overwrite the screen immediately on a blip, just log it.
-                // Only show error if we have no data at all yet.
-                if (document.getElementById('timer').innerText === "--:--:--") {
-                    document.getElementById('error-box').innerText = "Connection Issue: Retrying...";
-                    document.getElementById('error-box').style.display = 'block';
-                }
+                document.getElementById('error-box').innerText = "Network Error: Retrying...";
+                document.getElementById('error-box').style.display = 'block';
             } finally {
                 isFetching = false;
             }
@@ -192,41 +241,37 @@
 
         function processEvent(event) {
             const title = event.summary;
-            
-            // Handle Dates
             let start = new Date(event.start.dateTime || event.start.date);
             let end = new Date(event.end.dateTime || event.end.date);
             const now = new Date();
 
-            // LOGIC: DETERMINING STATE
-            // State 1: Event is currently happening
-            if (now >= start && now < end) {
-                isEventActive = true;
-                currentTargetDate = end; // Count down to the END
-                
-                // UI Updates for "Active"
-                document.getElementById('top-label').innerText = "CURRENTLY OCCUPIED";
-                document.getElementById('timer-label').innerText = "Time Remaining";
-                document.getElementById('status-dot').classList.add('busy-dot');
-                document.getElementById('main-card').classList.add('active-state');
-                document.getElementById('timer').style.color = "#cf6679"; // Red timer
-            } 
-            // State 2: Event is in the future
-            else {
-                isEventActive = false;
-                currentTargetDate = start; // Count down to the START
+            const topLabel = document.getElementById('top-label');
+            const timerLabel = document.getElementById('timer-label');
+            const statusDot = document.getElementById('status-dot');
+            const mainCard = document.getElementById('main-card');
+            const timerDisplay = document.getElementById('timer');
 
-                // UI Updates for "Upcoming"
-                document.getElementById('top-label').innerText = "UP NEXT";
-                document.getElementById('timer-label').innerText = "Starts In";
-                document.getElementById('status-dot').classList.remove('busy-dot');
-                document.getElementById('main-card').classList.remove('active-state');
-                document.getElementById('timer').style.color = "#ffffff"; // White timer
+            if (now >= start && now < end) {
+                currentTargetDate = end;
+                
+                topLabel.innerText = "CURRENTLY OCCUPIED";
+                timerLabel.innerText = "Time Remaining";
+                statusDot.classList.add('busy-dot');
+                mainCard.classList.add('active-state');
+                timerDisplay.style.color = "var(--accent-active)";
+            } 
+            else {
+                currentTargetDate = start;
+
+                topLabel.innerText = "UP NEXT";
+                timerLabel.innerText = "Starts In";
+                statusDot.classList.remove('busy-dot');
+                mainCard.classList.remove('active-state');
+                timerDisplay.style.color = "var(--text-main)";
             }
 
             document.getElementById('event-title').innerText = title;
 
-            // Format the time range display (e.g., 2:00 PM - 3:00 PM)
             const timeOpt = { hour: 'numeric', minute: '2-digit' };
             document.getElementById('time-range').innerText = 
                 `${start.toLocaleTimeString([], timeOpt)} - ${end.toLocaleTimeString([], timeOpt)}`;
@@ -239,10 +284,11 @@
             document.getElementById('top-label').innerText = "STATUS";
             document.getElementById('event-title').innerText = "Bay 1 Available";
             document.getElementById('timer').innerText = "FREE";
+            document.getElementById('timer').style.color = "var(--accent-idle)";
             document.getElementById('timer-label').innerText = "No upcoming events";
             document.getElementById('time-range').innerText = "Calendar is clear";
-            document.getElementById('timer').style.color = "#03dac6"; // Green/Teal
             document.getElementById('status-dot').classList.remove('busy-dot');
+            document.getElementById('main-card').classList.remove('active-state');
         }
 
         function updateTimer() {
@@ -251,19 +297,9 @@
             const now = new Date();
             const diff = currentTargetDate - now;
 
-            // Timer hit zero?
             if (diff <= 0) {
-                // If we were counting down to START, and hit 0, we are now ACTIVE.
-                // If we were counting down to END, and hit 0, we are now FINISHED.
-                // In both cases, we simply refresh the calendar to get the new state.
-                
                 document.getElementById('timer').innerText = "00:00:00";
-                
-                // Fetch new data immediately, but throttle slightly to avoid the "flashing" bug
-                if (!isFetching) {
-                     console.log("Timer hit zero. Refreshing...");
-                     fetchCalendar();
-                }
+                fetchCalendar();
                 return;
             }
 
@@ -278,14 +314,8 @@
             document.getElementById('timer').innerText = `${h}:${m}:${s}`;
         }
 
-        // --- Init ---
         fetchCalendar();
-        
-        // Timer tick (UI update only)
         setInterval(updateTimer, 1000);
-
-        // Data Refresh (API call) - Every 2 minutes
-        // We don't need to be aggressive here because the countdown handles the second-by-second logic
         setInterval(fetchCalendar, 120000); 
 
     </script>
