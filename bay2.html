@@ -125,7 +125,16 @@
             box-shadow: 0 0 10px var(--accent-idle);
         }
 
-        .error-msg { color: #cf6679; font-size: 1.2rem; margin-top: 20px; font-weight: bold; }
+        .error-msg { 
+            color: #cf6679; 
+            font-size: 1rem; 
+            margin-top: 20px; 
+            font-weight: normal; 
+            background: rgba(207, 102, 121, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--accent-warning);
+        }
         
         .occupied-dot { background-color: var(--accent-occupied); box-shadow: 0 0 15px var(--accent-occupied); }
         .warning-dot { background-color: var(--accent-warning); box-shadow: 0 0 15px var(--accent-warning); }
@@ -223,15 +232,30 @@
             osc.stop(audioCtx.currentTime + 0.5);
         }
 
+        // Helper to get ISO date string (fallback for very old browsers)
+        function getNowISO() {
+            var date = new Date();
+            try {
+                return date.toISOString();
+            } catch(e) {
+                return date.getFullYear() + '-' + 
+                    ((date.getMonth()+1)<10?'0':'') + (date.getMonth()+1) + '-' + 
+                    (date.getDate()<10?'0':'') + date.getDate() + 'T' + 
+                    (date.getHours()<10?'0':'') + date.getHours() + ':' + 
+                    (date.getMinutes()<10?'0':'') + date.getMinutes() + ':' + 
+                    (date.getSeconds()<10?'0':'') + date.getSeconds() + 'Z';
+            }
+        }
+
         // Legacy AJAX for older iPads (no fetch)
         function getCalendarData() {
             if (isFetching) return;
             var nowTime = new Date().getTime();
-            if (nowTime - lastFetchTime < 2000) return;
+            if (nowTime - lastFetchTime < 3000) return; // Wait 3s between retries
             isFetching = true;
             lastFetchTime = nowTime;
 
-            var nowISO = new Date().toISOString();
+            var nowISO = getNowISO();
             var url = 'https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(CALENDAR_ID) + 
                       '/events?key=' + API_KEY + '&timeMin=' + nowISO + '&singleEvents=true&orderBy=startTime&q=' + 
                       encodeURIComponent(SEARCH_TERM) + '&maxResults=5';
@@ -241,6 +265,7 @@
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4) {
                     isFetching = false;
+                    var errorEl = document.getElementById('error-box');
                     if (xhr.status === 200) {
                         var data = JSON.parse(xhr.responseText);
                         var validEvent = null;
@@ -255,10 +280,13 @@
                         }
                         if (validEvent) processEvent(validEvent);
                         else handleNoEvents();
-                        document.getElementById('error-box').style.display = 'none';
+                        errorEl.style.display = 'none';
+                    } else if (xhr.status === 403) {
+                        errorEl.innerText = "Error 403: Access Forbidden. Check if Calendar is Public and API Key is valid.";
+                        errorEl.style.display = 'block';
                     } else {
-                        document.getElementById('error-box').innerText = "Connection Error (" + xhr.status + ")";
-                        document.getElementById('error-box').style.display = 'block';
+                        errorEl.innerText = "Connection Error (" + xhr.status + "). Retrying...";
+                        errorEl.style.display = 'block';
                     }
                 }
             };
