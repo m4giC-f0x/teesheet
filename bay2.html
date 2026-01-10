@@ -251,7 +251,7 @@
         function getCalendarData() {
             if (isFetching) return;
             var nowTime = new Date().getTime();
-            if (nowTime - lastFetchTime < 3000) return; // Wait 3s between retries
+            if (nowTime - lastFetchTime < 3000) return; 
             isFetching = true;
             lastFetchTime = nowTime;
 
@@ -261,7 +261,12 @@
                       encodeURIComponent(SEARCH_TERM) + '&maxResults=5';
 
             var xhr = new XMLHttpRequest();
+            // Use true for asynchronous
             xhr.open('GET', url, true);
+            
+            // Critical for older browsers to avoid triggering complex CORS preflights unnecessarily
+            xhr.withCredentials = false;
+
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4) {
                     isFetching = false;
@@ -282,7 +287,11 @@
                         else handleNoEvents();
                         errorEl.style.display = 'none';
                     } else if (xhr.status === 403) {
-                        errorEl.innerText = "Error 403: Access Forbidden. Check if Calendar is Public and API Key is valid.";
+                        // Detailed diagnostic for 403
+                        errorEl.innerText = "Error 403: Forbidden. Check API Key restrictions (HTTP Referrers) in Google Cloud Console.";
+                        errorEl.style.display = 'block';
+                    } else if (xhr.status === 0) {
+                        errorEl.innerText = "Error 0: Cross-Origin (CORS) or SSL block. Ensure iPad date/time is correct.";
                         errorEl.style.display = 'block';
                     } else {
                         errorEl.innerText = "Connection Error (" + xhr.status + "). Retrying...";
