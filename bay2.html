@@ -10,9 +10,9 @@
             --card-bg: #1e1e1e;
             --text-main: #ffffff;
             --text-muted: #a0a0a0;
-            --accent-idle: #03dac6;
-            --accent-occupied: #96cb39;
-            --accent-warning: #cf6679;
+            --accent-idle: #03dac6; /* Teal for "Available" */
+            --accent-occupied: #96cb39; /* Your specific Green */
+            --accent-warning: #cf6679; /* Red for warning */
         }
 
         body {
@@ -24,7 +24,7 @@
             align-items: center;
             height: 100vh;
             margin: 0;
-            padding: 0;
+            padding: 0; /* Removed padding to maximize space */
             box-sizing: border-box;
             overflow: hidden;
             position: relative;
@@ -39,8 +39,8 @@
             border-radius: 24px;
             box-shadow: 0 15px 50px rgba(0,0,0,0.5);
             text-align: center;
-            width: 95%;
-            max-width: 850px;
+            width: 95%; /* Increased from 100% with max-width */
+            max-width: 850px; /* Increased from 650px to fill more screen */
             transition: border-color 0.5s, transform 0.3s;
             border: 2px solid transparent;
             z-index: 1;
@@ -51,19 +51,26 @@
             margin-bottom: 15px;
             display: flex;
             justify-content: center;
+            min-height: auto;
         }
 
         .logo-container img {
-            max-height: 180px;
+            max-height: 180px; /* Slightly larger logo */
             max-width: 450px;  
             object-fit: contain;
         }
 
-        .dashboard-card.occupied-state { border-color: var(--accent-occupied); }
-        .dashboard-card.warning-state { border-color: var(--accent-warning); }
+        /* Specific border colors for states */
+        .dashboard-card.occupied-state {
+            border-color: var(--accent-occupied);
+        }
+
+        .dashboard-card.warning-state {
+            border-color: var(--accent-warning);
+        }
 
         .label {
-            font-size: 1.1rem;
+            font-size: 1.1rem; /* Slightly larger */
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 5px;
@@ -72,7 +79,7 @@
         }
 
         .event-title {
-            font-size: 3.5rem;
+            font-size: 3.5rem; /* Larger font for event titles */
             font-weight: 700;
             margin: 0 0 15px 0;
             line-height: 1.1;
@@ -85,13 +92,13 @@
         .timer-container {
             background: rgba(0,0,0,0.2);
             border-radius: 20px;
-            padding: 30px;
+            padding: 30px; /* More internal padding */
             margin: 25px 0; 
             border: 1px solid rgba(255,255,255,0.05);
         }
 
         .timer {
-            font-size: 8rem;
+            font-size: 8rem; /* Significant increase for fullscreen impact */
             font-weight: 700;
             font-variant-numeric: tabular-nums;
             letter-spacing: -4px;
@@ -108,7 +115,7 @@
         }
 
         .event-time {
-            font-size: 1.5rem;
+            font-size: 1.5rem; /* Larger footer text */
             color: var(--text-muted);
             display: flex;
             align-items: center;
@@ -123,22 +130,16 @@
             border-radius: 50%;
             display: inline-block;
             box-shadow: 0 0 10px var(--accent-idle);
+            transition: background-color 0.3s, box-shadow 0.3s;
         }
 
-        .error-msg { 
-            color: #cf6679; 
-            font-size: 1rem; 
-            margin-top: 20px; 
-            font-weight: normal; 
-            background: rgba(207, 102, 121, 0.1);
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid var(--accent-warning);
-        }
+        .error-msg { color: #cf6679; font-size: 0.9rem; margin-top: 20px; display: none; }
         
+        /* State Helper Classes */
         .occupied-dot { background-color: var(--accent-occupied); box-shadow: 0 0 15px var(--accent-occupied); }
         .warning-dot { background-color: var(--accent-warning); box-shadow: 0 0 15px var(--accent-warning); }
 
+        /* Custom Password Modal Styling */
         #pass-modal {
             display: none;
             position: fixed;
@@ -149,7 +150,6 @@
             align-items: center;
             flex-direction: column;
             backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
         }
         #pass-modal input {
             background: #2a2a2a;
@@ -168,6 +168,7 @@
             padding: 10px 20px;
             border-radius: 8px;
             font-weight: bold;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -175,21 +176,32 @@
 
     <div class="dashboard-card" id="main-card">
         <div class="logo-container">
-            <img src="https://m4gic-f0x.github.io/teesheet/b9.png" id="app-logo" alt="Logo" onerror="this.style.display='none'">
+            <img 
+                src="https://m4gic-f0x.github.io/teesheet/b9.png" 
+                id="app-logo" 
+                alt="Logo" 
+                onerror="this.style.display='none'"
+            >
         </div>
+
         <div class="label" id="top-label">Initializing...</div>
+        
         <div class="event-title" id="event-title">---</div>
+        
         <div class="timer-container">
             <div class="timer" id="timer">00:00:00</div>
             <div class="sub-timer" id="timer-label">Syncing</div>
         </div>
+
         <div class="event-time">
             <span class="status-dot" id="status-dot"></span>
             <span id="time-range">Establishing Connection...</span>
         </div>
-        <div class="error-msg" id="error-box" style="display:none;"></div>
+        
+        <div class="error-msg" id="error-box"></div>
     </div>
 
+    <!-- Hidden Password Modal -->
     <div id="pass-modal">
         <div class="label" style="color: white; margin-bottom: 20px;">Kiosk Locked - Enter PIN</div>
         <input type="password" id="pin-input" placeholder="••••" maxlength="4" inputmode="numeric">
@@ -199,128 +211,186 @@
     </div>
 
     <script>
-        // CONFIG
-        var API_KEY = 'AIzaSyDHxd0Ms4jv6qXcBu0Od9vm3B1IeniOtTo';
-        var CALENDAR_ID = 'c_49229d9cac9c5624fe5d288c9356e492658134943d61459600373109dbf8379b@group.calendar.google.com';
-        var SEARCH_TERM = "Bay 2"; 
-        var ADMIN_PIN = "1234";
+        // ==========================================
+        // CONFIGURATION
+        // ==========================================
+        const API_KEY = 'AIzaSyDHxd0Ms4jv6qXcBu0Od9vm3B1IeniOtTo';
+        const CALENDAR_ID = 'c_49229d9cac9c5624fe5d288c9356e492658134943d61459600373109dbf8379b@group.calendar.google.com';
+        const SEARCH_TERM = "Bay 2"; 
+        const ADMIN_PIN = "1234"; // Set your kiosk exit pin here
+        // ==========================================
 
-        var currentTargetDate = null;
-        var isFetching = false; 
-        var lastFetchTime = 0;
-        var isInternalUnlock = false;
-        var isOccupied = false;
-        var chimePlayed10 = false, chimePlayed5 = false, chimePlayed0 = false;
+        let currentTargetDate = null;
+        let isFetching = false; 
+        let lastFetchTime = 0;
+        let isInternalUnlock = false;
+        let isOccupied = false;
 
-        // AudioContext Polyfill
-        var AudioContext = window.AudioContext || window.webkitAudioContext;
-        var audioCtx = AudioContext ? new AudioContext() : null;
+        // Chime state tracking to prevent repeated triggers
+        let chimePlayed10 = false;
+        let chimePlayed5 = false;
+        let chimePlayed0 = false;
 
-        function playChime(freq) {
-            if (!audioCtx) return;
+        /**
+         * Audio Chime Implementation
+         */
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playChime(freq = 880) {
             if (audioCtx.state === 'suspended') audioCtx.resume();
-            freq = freq || 880;
-            var osc = audioCtx.createOscillator();
-            var gain = audioCtx.createGain();
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
             osc.type = 'sine';
             osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(freq / 2, audioCtx.currentTime + 0.5);
+            
             gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            
             osc.connect(gain);
             gain.connect(audioCtx.destination);
+            
             osc.start();
             osc.stop(audioCtx.currentTime + 0.5);
         }
 
-        // Helper to get ISO date string (fallback for very old browsers)
-        function getNowISO() {
-            var date = new Date();
-            try {
-                return date.toISOString();
-            } catch(e) {
-                return date.getFullYear() + '-' + 
-                    ((date.getMonth()+1)<10?'0':'') + (date.getMonth()+1) + '-' + 
-                    (date.getDate()<10?'0':'') + date.getDate() + 'T' + 
-                    (date.getHours()<10?'0':'') + date.getHours() + ':' + 
-                    (date.getMinutes()<10?'0':'') + date.getMinutes() + ':' + 
-                    (date.getSeconds()<10?'0':'') + date.getSeconds() + 'Z';
+        /**
+         * Kiosk Protection Logic
+         */
+        let tapCount = 0;
+        let tapTimer = null;
+
+        document.body.addEventListener('touchstart', (e) => {
+            // Browsers require a user interaction to enable audio
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            if(document.getElementById('pass-modal').style.display === 'flex') return;
+
+            tapCount++;
+            if (tapTimer) clearTimeout(tapTimer);
+            
+            if (tapCount === 3) {
+                handleKioskToggle();
+                tapCount = 0;
+            } else {
+                tapTimer = setTimeout(() => {
+                    tapCount = 0;
+                }, 400); 
+            }
+        });
+
+        // Detect when fullscreen is exited
+        const fsEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
+        fsEvents.forEach(evt => document.addEventListener(evt, handleExitDetection));
+
+        function handleExitDetection() {
+            if (!isFullscreen() && !isInternalUnlock) {
+                document.getElementById('pass-modal').style.display = 'flex';
+                document.getElementById('pin-input').focus();
             }
         }
 
-        // Legacy AJAX for older iPads (no fetch)
-        function getCalendarData() {
+        function isFullscreen() {
+            return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+        }
+
+        function handleKioskToggle() {
+            if (!isFullscreen()) {
+                enterFullscreen();
+            } else {
+                document.getElementById('pass-modal').style.display = 'flex';
+                document.getElementById('pin-input').focus();
+            }
+        }
+
+        function enterFullscreen() {
+            const docEl = document.documentElement;
+            const request = docEl.requestFullscreen || docEl.webkitRequestFullScreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+            if (request) request.call(docEl);
+        }
+
+        function checkPin() {
+            const input = document.getElementById('pin-input');
+            if (input.value === ADMIN_PIN) {
+                isInternalUnlock = true;
+                closeModal();
+                enterFullscreen();
+                setTimeout(() => { isInternalUnlock = false; }, 1000);
+            } else {
+                input.value = "";
+                input.placeholder = "WRONG";
+                setTimeout(() => { input.placeholder = "••••"; }, 1000);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('pass-modal').style.display = 'none';
+            document.getElementById('pin-input').value = "";
+        }
+
+        /**
+         * API & Timer Logic
+         */
+        async function fetchCalendar() {
             if (isFetching) return;
-            var nowTime = new Date().getTime();
-            if (nowTime - lastFetchTime < 3000) return; 
+            const nowTime = Date.now();
+            if (nowTime - lastFetchTime < 2000) return;
             isFetching = true;
             lastFetchTime = nowTime;
 
-            var nowISO = getNowISO();
-            var url = 'https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(CALENDAR_ID) + 
-                      '/events?key=' + API_KEY + '&timeMin=' + nowISO + '&singleEvents=true&orderBy=startTime&q=' + 
-                      encodeURIComponent(SEARCH_TERM) + '&maxResults=5';
+            const nowISO = new Date().toISOString();
+            const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?key=${API_KEY}&timeMin=${nowISO}&singleEvents=true&orderBy=startTime&q=${encodeURIComponent(SEARCH_TERM)}&maxResults=5`;
 
-            var xhr = new XMLHttpRequest();
-            // Use true for asynchronous
-            xhr.open('GET', url, true);
-            
-            // Critical for older browsers to avoid triggering complex CORS preflights unnecessarily
-            xhr.withCredentials = false;
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
 
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4) {
-                    isFetching = false;
-                    var errorEl = document.getElementById('error-box');
-                    if (xhr.status === 200) {
-                        var data = JSON.parse(xhr.responseText);
-                        var validEvent = null;
-                        if (data.items) {
-                            for (var i = 0; i < data.items.length; i++) {
-                                var summary = data.items[i].summary || "";
-                                if (summary.toLowerCase().indexOf(SEARCH_TERM.toLowerCase()) !== -1) {
-                                    validEvent = data.items[i];
-                                    break;
-                                }
-                            }
-                        }
-                        if (validEvent) processEvent(validEvent);
-                        else handleNoEvents();
-                        errorEl.style.display = 'none';
-                    } else if (xhr.status === 403) {
-                        // Detailed diagnostic for 403
-                        errorEl.innerText = "Error 403: Forbidden. Check API Key restrictions (HTTP Referrers) in Google Cloud Console.";
-                        errorEl.style.display = 'block';
-                    } else if (xhr.status === 0) {
-                        errorEl.innerText = "Error 0: Cross-Origin (CORS) or SSL block. Ensure iPad date/time is correct.";
-                        errorEl.style.display = 'block';
-                    } else {
-                        errorEl.innerText = "Connection Error (" + xhr.status + "). Retrying...";
-                        errorEl.style.display = 'block';
-                    }
-                }
-            };
-            xhr.send();
+                let validEvent = data.items ? data.items.find(event => (event.summary || "").toLowerCase().includes(SEARCH_TERM.toLowerCase())) : null;
+
+                if (validEvent) processEvent(validEvent);
+                else handleNoEvents();
+                
+                document.getElementById('error-box').style.display = 'none';
+            } catch (error) {
+                document.getElementById('error-box').innerText = "Network Error: Retrying...";
+                document.getElementById('error-box').style.display = 'block';
+            } finally {
+                isFetching = false;
+            }
         }
 
-        // Fullscreen Polyfill for iOS/Old Safari
-        function enterFullscreen() {
-            var docEl = document.documentElement;
-            var fn = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.webkitRequestFullScreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
-            if (fn) fn.call(docEl);
+        function setUIState(state) {
+            const mainCard = document.getElementById('main-card');
+            const statusDot = document.getElementById('status-dot');
+            const timerDisplay = document.getElementById('timer');
+
+            mainCard.classList.remove('occupied-state', 'warning-state');
+            statusDot.classList.remove('occupied-dot', 'warning-dot');
+
+            if (state === 'occupied') {
+                mainCard.classList.add('occupied-state');
+                statusDot.classList.add('occupied-dot');
+                timerDisplay.style.color = "var(--accent-occupied)";
+            } else if (state === 'warning') {
+                mainCard.classList.add('warning-state');
+                statusDot.classList.add('warning-dot');
+                timerDisplay.style.color = "var(--accent-warning)";
+            } else {
+                // Idle or default
+                timerDisplay.style.color = "var(--text-main)";
+            }
         }
 
-        function isFullscreen() {
-            return !!(document.fullscreenElement || document.webkitFullscreenElement || document.webkitIsFullScreen || document.mozFullScreenElement || document.msFullscreenElement);
-        }
-
-        // EVENT PROCESSING
         function processEvent(event) {
-            var title = event.summary;
-            var start = new Date(event.start.dateTime || event.start.date);
-            var end = new Date(event.end.dateTime || event.end.date);
-            var now = new Date();
-            var topLabel = document.getElementById('top-label');
-            var timerLabel = document.getElementById('timer-label');
+            const title = event.summary;
+            let start = new Date(event.start.dateTime || event.start.date);
+            let end = new Date(event.end.dateTime || event.end.date);
+            const now = new Date();
+            const topLabel = document.getElementById('top-label');
+            const timerLabel = document.getElementById('timer-label');
 
             if (now >= start && now < end) {
                 isOccupied = true;
@@ -333,18 +403,23 @@
                 topLabel.innerText = "UP NEXT";
                 timerLabel.innerText = "Starts In";
                 setUIState('idle');
-                chimePlayed10 = false; chimePlayed5 = false; chimePlayed0 = false;
+                // Reset chime flags for next session
+                chimePlayed10 = false;
+                chimePlayed5 = false;
+                chimePlayed0 = false;
             }
             document.getElementById('event-title').innerText = title;
-            var timeRange = start.getHours() + ":" + (start.getMinutes()<10?'0':'') + start.getMinutes() + " - " + 
-                            end.getHours() + ":" + (end.getMinutes()<10?'0':'') + end.getMinutes();
-            document.getElementById('time-range').innerText = timeRange;
+            const timeOpt = { hour: 'numeric', minute: '2-digit' };
+            document.getElementById('time-range').innerText = `${start.toLocaleTimeString([], timeOpt)} - ${end.toLocaleTimeString([], timeOpt)}`;
             updateTimer();
         }
 
         function handleNoEvents() {
             currentTargetDate = null;
             isOccupied = false;
+            chimePlayed10 = false;
+            chimePlayed5 = false;
+            chimePlayed0 = false;
             document.getElementById('top-label').innerText = "STATUS";
             document.getElementById('event-title').innerText = "Bay 2 Available";
             document.getElementById('timer').innerText = "FREE";
@@ -354,82 +429,50 @@
             setUIState('idle');
         }
 
-        function setUIState(state) {
-            var card = document.getElementById('main-card');
-            var dot = document.getElementById('status-dot');
-            var timer = document.getElementById('timer');
-            card.className = "dashboard-card";
-            dot.className = "status-dot";
-            if (state === 'occupied') {
-                card.classList.add('occupied-state');
-                dot.classList.add('occupied-dot');
-                timer.style.color = "var(--accent-occupied)";
-            } else if (state === 'warning') {
-                card.classList.add('warning-state');
-                dot.classList.add('warning-dot');
-                timer.style.color = "var(--accent-warning)";
-            } else {
-                timer.style.color = "var(--text-main)";
-            }
-        }
-
         function updateTimer() {
             if (!currentTargetDate) return;
-            var now = new Date().getTime();
-            var diff = currentTargetDate.getTime() - now;
+            const now = new Date();
+            const diff = currentTargetDate - now;
             
             if (diff <= 0) {
                 document.getElementById('timer').innerText = "00:00:00";
-                if (isOccupied && !chimePlayed0) { playChime(440); chimePlayed0 = true; }
-                getCalendarData();
+                if (isOccupied && !chimePlayed0) {
+                    playChime(440); // Low chime for end of event
+                    chimePlayed0 = true;
+                }
+                fetchCalendar();
                 return;
             }
 
             if (isOccupied) {
-                if (diff <= 300000 && !chimePlayed5) { playChime(1100); chimePlayed5 = true; }
-                else if (diff <= 600000 && !chimePlayed10) { playChime(880); chimePlayed10 = true; }
-                setUIState(diff <= 600000 ? 'warning' : 'occupied');
+                // Chime Logic
+                if (diff <= 300000 && !chimePlayed5) { // 5 Minutes
+                    playChime(1100); 
+                    chimePlayed5 = true;
+                } else if (diff <= 600000 && !chimePlayed10) { // 10 Minutes
+                    playChime(880);
+                    chimePlayed10 = true;
+                }
+
+                // UI Coloring Logic
+                if (diff <= 600000) {
+                    setUIState('warning');
+                } else {
+                    setUIState('occupied');
+                }
             }
 
-            var h = Math.floor(diff / 3600000);
-            var m = Math.floor((diff % 3600000) / 60000);
-            var s = Math.floor((diff % 60000) / 1000);
-            document.getElementById('timer').innerText = (h<10?'0':'')+h+":"+(m<10?'0':'')+m+":"+(s<10?'0':'')+s;
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            document.getElementById('timer').innerText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         }
 
-        // Kiosk Handlers
-        var tapCount = 0, tapTimer = null;
-        document.body.addEventListener('touchstart', function() {
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-            if (document.getElementById('pass-modal').style.display === 'flex') return;
-            tapCount++;
-            clearTimeout(tapTimer);
-            if (tapCount === 3) {
-                if (!isFullscreen()) enterFullscreen();
-                else document.getElementById('pass-modal').style.display = 'flex';
-                tapCount = 0;
-            } else {
-                tapTimer = setTimeout(function(){ tapCount = 0; }, 400);
-            }
-        });
-
-        function checkPin() {
-            var input = document.getElementById('pin-input');
-            if (input.value === ADMIN_PIN) {
-                isInternalUnlock = true;
-                document.getElementById('pass-modal').style.display = 'none';
-                enterFullscreen();
-                input.value = "";
-                setTimeout(function(){ isInternalUnlock = false; }, 1000);
-            } else {
-                input.value = "";
-            }
-        }
-
-        // Initialization
-        getCalendarData();
+        fetchCalendar();
         setInterval(updateTimer, 1000);
-        setInterval(getCalendarData, 120000);
+        setInterval(fetchCalendar, 120000); 
+
     </script>
 </body>
 </html>
+
