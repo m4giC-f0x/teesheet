@@ -10,7 +10,7 @@
             --card-bg: #1e1e1e;
             --text-main: #ffffff;
             --text-muted: #a0a0a0;
-            --accent-idle: #cf6679; /* Red for "Times Up" */
+            --accent-idle: #cf6679; /* Red for "Session Complete" */
             --accent-occupied: #96cb39; /* Your specific Green */
             --accent-warning: #cf6679; /* Red for warning/Up Next */
         }
@@ -94,10 +94,10 @@
         }
 
         .timer {
-            font-size: 8rem;
+            font-size: 6.5rem; /* Slightly reduced font size to fit "SESSION COMPLETE" on one line */
             font-weight: 700;
             font-variant-numeric: tabular-nums;
-            letter-spacing: -4px;
+            letter-spacing: -2px;
             line-height: 1;
             transition: color 0.3s;
         }
@@ -308,14 +308,17 @@
                 mainCard.classList.add('occupied-state');
                 statusDot.classList.add('occupied-dot');
                 timerDisplay.style.color = "var(--accent-occupied)";
+                timerDisplay.style.fontSize = "8rem";
             } else if (state === 'warning') {
                 mainCard.classList.add('warning-state');
                 statusDot.classList.add('warning-dot');
                 timerDisplay.style.color = "var(--accent-warning)";
+                timerDisplay.style.fontSize = "8rem";
             } else {
                 mainCard.classList.add('idle-state'); 
                 statusDot.classList.add('warning-dot');
                 timerDisplay.style.color = "var(--accent-idle)";
+                timerDisplay.style.fontSize = "6.5rem"; // Smaller font for the longer message
             }
         }
 
@@ -367,7 +370,7 @@
             isUpNext = false;
             
             document.getElementById('top-label').innerText = "STATUS";
-            document.getElementById('event-title').innerText = "Bay 2"; // Removed "Available"
+            document.getElementById('event-title').innerText = "Bay 2";
             document.getElementById('timer').innerText = "SESSION COMPLETE";
             document.getElementById('timer-label').innerText = ""; 
             document.getElementById('event-time-footer').style.visibility = "hidden"; 
@@ -424,4 +427,3 @@
     </script>
 </body>
 </html>
-
