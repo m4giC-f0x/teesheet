@@ -10,7 +10,7 @@
             --card-bg: #1e1e1e;
             --text-main: #ffffff;
             --text-muted: #a0a0a0;
-            --accent-idle: #03dac6; /* Teal for "Available" */
+            --accent-idle: #03dac6; /* Teal for "Available / Times Up" */
             --accent-occupied: #96cb39; /* Your specific Green */
             --accent-warning: #cf6679; /* Red for warning */
         }
@@ -24,7 +24,7 @@
             align-items: center;
             height: 100vh;
             margin: 0;
-            padding: 0; /* Removed padding to maximize space */
+            padding: 0;
             box-sizing: border-box;
             overflow: hidden;
             position: relative;
@@ -39,8 +39,8 @@
             border-radius: 24px;
             box-shadow: 0 15px 50px rgba(0,0,0,0.5);
             text-align: center;
-            width: 95%; /* Increased from 100% with max-width */
-            max-width: 850px; /* Increased from 650px to fill more screen */
+            width: 95%;
+            max-width: 850px;
             transition: border-color 0.5s, transform 0.3s;
             border: 2px solid transparent;
             z-index: 1;
@@ -55,22 +55,17 @@
         }
 
         .logo-container img {
-            max-height: 180px; /* Slightly larger logo */
+            max-height: 180px;
             max-width: 450px;  
             object-fit: contain;
         }
 
-        /* Specific border colors for states */
-        .dashboard-card.occupied-state {
-            border-color: var(--accent-occupied);
-        }
-
-        .dashboard-card.warning-state {
-            border-color: var(--accent-warning);
-        }
+        .dashboard-card.occupied-state { border-color: var(--accent-occupied); }
+        .dashboard-card.warning-state { border-color: var(--accent-warning); }
+        .dashboard-card.idle-state { border-color: var(--accent-idle); }
 
         .label {
-            font-size: 1.1rem; /* Slightly larger */
+            font-size: 1.1rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 5px;
@@ -79,7 +74,7 @@
         }
 
         .event-title {
-            font-size: 3.5rem; /* Larger font for event titles */
+            font-size: 3.5rem;
             font-weight: 700;
             margin: 0 0 15px 0;
             line-height: 1.1;
@@ -92,13 +87,13 @@
         .timer-container {
             background: rgba(0,0,0,0.2);
             border-radius: 20px;
-            padding: 30px; /* More internal padding */
+            padding: 30px;
             margin: 25px 0; 
             border: 1px solid rgba(255,255,255,0.05);
         }
 
         .timer {
-            font-size: 8rem; /* Significant increase for fullscreen impact */
+            font-size: 8rem;
             font-weight: 700;
             font-variant-numeric: tabular-nums;
             letter-spacing: -4px;
@@ -115,7 +110,7 @@
         }
 
         .event-time {
-            font-size: 1.5rem; /* Larger footer text */
+            font-size: 1.5rem;
             color: var(--text-muted);
             display: flex;
             align-items: center;
@@ -134,12 +129,9 @@
         }
 
         .error-msg { color: #cf6679; font-size: 0.9rem; margin-top: 20px; display: none; }
-        
-        /* State Helper Classes */
         .occupied-dot { background-color: var(--accent-occupied); box-shadow: 0 0 15px var(--accent-occupied); }
         .warning-dot { background-color: var(--accent-warning); box-shadow: 0 0 15px var(--accent-warning); }
 
-        /* Custom Password Modal Styling */
         #pass-modal {
             display: none;
             position: fixed;
@@ -176,16 +168,10 @@
 
     <div class="dashboard-card" id="main-card">
         <div class="logo-container">
-            <img 
-                src="https://m4gic-f0x.github.io/teesheet/b9.png" 
-                id="app-logo" 
-                alt="Logo" 
-                onerror="this.style.display='none'"
-            >
+            <img src="https://m4gic-f0x.github.io/teesheet/b9.png" id="app-logo" alt="Logo" onerror="this.style.display='none'">
         </div>
 
         <div class="label" id="top-label">Initializing...</div>
-        
         <div class="event-title" id="event-title">---</div>
         
         <div class="timer-container">
@@ -201,7 +187,6 @@
         <div class="error-msg" id="error-box"></div>
     </div>
 
-    <!-- Hidden Password Modal -->
     <div id="pass-modal">
         <div class="label" style="color: white; margin-bottom: 20px;">Kiosk Locked - Enter PIN</div>
         <input type="password" id="pin-input" placeholder="••••" maxlength="4" inputmode="numeric">
@@ -217,7 +202,7 @@
         const API_KEY = 'AIzaSyDHxd0Ms4jv6qXcBu0Od9vm3B1IeniOtTo';
         const CALENDAR_ID = 'c_49229d9cac9c5624fe5d288c9356e492658134943d61459600373109dbf8379b@group.calendar.google.com';
         const SEARCH_TERM = "Bay 2"; 
-        const ADMIN_PIN = "1234"; // Set your kiosk exit pin here
+        const ADMIN_PIN = "1234";
         // ==========================================
 
         let currentTargetDate = null;
@@ -225,18 +210,116 @@
         let lastFetchTime = 0;
         let isInternalUnlock = false;
         let isOccupied = false;
+        let isUpNext = false;
 
-        // Chime state tracking to prevent repeated triggers
         let chimePlayed10 = false;
         let chimePlayed5 = false;
         let chimePlayed0 = false;
 
-        /**
-         * Audio Chime Implementation
-         */
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        // --- Replace your existing script functions with these updated versions ---
+        function playChime(freq = 880) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(freq / 2, audioCtx.currentTime + 0.5);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.5);
+        }
+
+        // Kiosk logic
+        let tapCount = 0;
+        let tapTimer = null;
+        document.body.addEventListener('touchstart', (e) => {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            if(document.getElementById('pass-modal').style.display === 'flex') return;
+            tapCount++;
+            if (tapTimer) clearTimeout(tapTimer);
+            if (tapCount === 3) { handleKioskToggle(); tapCount = 0; }
+            else { tapTimer = setTimeout(() => { tapCount = 0; }, 400); }
+        });
+
+        const fsEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
+        fsEvents.forEach(evt => document.addEventListener(evt, handleExitDetection));
+
+        function handleExitDetection() {
+            if (!isFullscreen() && !isInternalUnlock) {
+                document.getElementById('pass-modal').style.display = 'flex';
+                document.getElementById('pin-input').focus();
+            }
+        }
+
+        function isFullscreen() { return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement); }
+        function handleKioskToggle() { if (!isFullscreen()) enterFullscreen(); else document.getElementById('pass-modal').style.display = 'flex'; }
+        function enterFullscreen() { const docEl = document.documentElement; const request = docEl.requestFullscreen || docEl.webkitRequestFullScreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen; if (request) request.call(docEl); }
+        function checkPin() {
+            const input = document.getElementById('pin-input');
+            if (input.value === ADMIN_PIN) {
+                isInternalUnlock = true; closeModal(); enterFullscreen();
+                setTimeout(() => { isInternalUnlock = false; }, 1000);
+            } else {
+                input.value = ""; input.placeholder = "WRONG";
+                setTimeout(() => { input.placeholder = "••••"; }, 1000);
+            }
+        }
+        function closeModal() { document.getElementById('pass-modal').style.display = 'none'; document.getElementById('pin-input').value = ""; }
+
+        async function fetchCalendar() {
+            if (isFetching) return;
+            const nowTime = Date.now();
+            if (nowTime - lastFetchTime < 2000) return;
+            isFetching = true;
+            lastFetchTime = nowTime;
+
+            const nowISO = new Date().toISOString();
+            const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?key=${API_KEY}&timeMin=${nowISO}&singleEvents=true&orderBy=startTime&q=${encodeURIComponent(SEARCH_TERM)}&maxResults=5`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
+
+                let validEvent = data.items ? data.items.find(event => (event.summary || "").toLowerCase().includes(SEARCH_TERM.toLowerCase())) : null;
+
+                if (validEvent) processEvent(validEvent);
+                else handleNoEvents();
+                
+                document.getElementById('error-box').style.display = 'none';
+            } catch (error) {
+                document.getElementById('error-box').innerText = "Network Error: Retrying...";
+                document.getElementById('error-box').style.display = 'block';
+            } finally {
+                isFetching = false;
+            }
+        }
+
+        function setUIState(state) {
+            const mainCard = document.getElementById('main-card');
+            const statusDot = document.getElementById('status-dot');
+            const timerDisplay = document.getElementById('timer');
+
+            mainCard.classList.remove('occupied-state', 'warning-state', 'idle-state');
+            statusDot.classList.remove('occupied-dot', 'warning-dot');
+
+            if (state === 'occupied') {
+                mainCard.classList.add('occupied-state');
+                statusDot.classList.add('occupied-dot');
+                timerDisplay.style.color = "var(--accent-occupied)";
+            } else if (state === 'warning') {
+                mainCard.classList.add('warning-state');
+                statusDot.classList.add('warning-dot');
+                timerDisplay.style.color = "var(--accent-warning)";
+            } else {
+                mainCard.classList.add('idle-state');
+                timerDisplay.style.color = "var(--accent-idle)";
+            }
+        }
 
         function processEvent(event) {
             const title = event.summary;
@@ -246,35 +329,33 @@
             const topLabel = document.getElementById('top-label');
             const timerLabel = document.getElementById('timer-label');
             const eventTitle = document.getElementById('event-title');
-            const timerDisplay = document.getElementById('timer');
+            
+            const diffToStart = start - now;
 
-            // 1. CURRENTLY OCCUPIED
+            // STATE 1: Currently Occupied
             if (now >= start && now < end) {
                 isOccupied = true;
+                isUpNext = false;
                 currentTargetDate = end;
                 topLabel.innerText = "CURRENTLY OCCUPIED";
                 timerLabel.innerText = "Time Remaining";
                 eventTitle.innerText = title;
-                setUIState('occupied'); 
+                setUIState('occupied');
             } 
-            // 2. UP NEXT (Within 10 minutes of starting)
-            else if (start - now <= 600000 && start - now > 0) {
+            // STATE 2: Up Next (10 minutes before next event)
+            else if (diffToStart > 0 && diffToStart <= 600000) {
                 isOccupied = false;
+                isUpNext = true;
                 currentTargetDate = start;
                 topLabel.innerText = "UP NEXT";
                 timerLabel.innerText = "Starts In";
                 eventTitle.innerText = title;
-                setUIState('warning'); // Using warning color to grab attention
-                
-                // Reset chime flags for the new upcoming session
-                chimePlayed10 = false;
-                chimePlayed5 = false;
-                chimePlayed0 = false;
+                setUIState('warning');
             } 
-            // 3. AVAILABLE / TIMES UP (Nothing active, next event is far away)
+            // STATE 3: Times Up / Idle (More than 10 mins away or no event)
             else {
                 handleNoEvents();
-                return; 
+                return;
             }
 
             const timeOpt = { hour: 'numeric', minute: '2-digit' };
@@ -285,38 +366,22 @@
         function handleNoEvents() {
             currentTargetDate = null;
             isOccupied = false;
+            isUpNext = false;
             
-            const topLabel = document.getElementById('top-label');
-            const eventTitle = document.getElementById('event-title');
-            const timerDisplay = document.getElementById('timer');
-            const timerLabel = document.getElementById('timer-label');
-            const timeRange = document.getElementById('time-range');
-
-            // If we just finished an event, show "TIMES UP", otherwise "AVAILABLE"
-            topLabel.innerText = "STATUS";
-            eventTitle.innerText = "Bay 2 Available";
-            timerDisplay.innerText = "TIMES UP";
-            timerDisplay.style.color = "var(--accent-idle)";
-            timerLabel.innerText = "Ready for Session";
-            timeRange.innerText = "No current bookings";
-            
+            document.getElementById('top-label').innerText = "STATUS";
+            document.getElementById('event-title').innerText = "Bay 2 Available";
+            document.getElementById('timer').innerText = "TIMES UP";
+            document.getElementById('timer-label').innerText = "Ready for Session";
+            document.getElementById('time-range').innerText = "No upcoming bookings";
             setUIState('idle');
-
-            // Reset Chimes
+            
             chimePlayed10 = false;
             chimePlayed5 = false;
             chimePlayed0 = false;
         }
 
         function updateTimer() {
-            // If no event is active or close, don't run the countdown logic
-            if (!currentTargetDate) {
-                // Ensure "TIMES UP" or "FREE" stays visible
-                if (document.getElementById('timer').innerText !== "TIMES UP") {
-                    handleNoEvents();
-                }
-                return;
-            }
+            if (!currentTargetDate) return;
 
             const now = new Date();
             const diff = currentTargetDate - now;
@@ -327,32 +392,26 @@
                     playChime(440); 
                     chimePlayed0 = true;
                 }
-                fetchCalendar(); // Refresh to see if we transition to "TIMES UP" or a new event
+                fetchCalendar();
                 return;
             }
 
-            // Chime & Color Logic for Occupied State
             if (isOccupied) {
-                if (diff <= 300000 && !chimePlayed5) { 
-                    playChime(1100); 
-                    chimePlayed5 = true;
-                } else if (diff <= 600000 && !chimePlayed10) { 
-                    playChime(880);
-                    chimePlayed10 = true;
-                }
+                if (diff <= 300000 && !chimePlayed5) { playChime(1100); chimePlayed5 = true; }
+                else if (diff <= 600000 && !chimePlayed10) { playChime(880); chimePlayed10 = true; }
+                if (diff <= 600000) setUIState('warning');
+                else setUIState('occupied');
+            }
 
-                if (diff <= 600000) {
-                    setUIState('warning');
-                } else {
-                    setUIState('occupied');
-                }
+            // Logic to flip from Times Up to Up Next if we hit the 10m mark mid-tick
+            if (!isOccupied && !isUpNext && diff <= 600000) {
+                fetchCalendar();
             }
 
             const hours = Math.floor(diff / (1000 * 60 * 60));
             const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((diff % (1000 * 60)) / 1000);
             
-            // Format display
             let displayTime = "";
             if (hours > 0) displayTime += `${hours.toString().padStart(2, '0')}:`;
             displayTime += `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
@@ -360,8 +419,10 @@
             document.getElementById('timer').innerText = displayTime;
         }
 
+        fetchCalendar();
+        setInterval(updateTimer, 1000);
+        setInterval(fetchCalendar, 60000); // Check API every 1 minute for better accuracy
+
     </script>
 </body>
 </html>
-
-
