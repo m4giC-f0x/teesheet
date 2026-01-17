@@ -11,9 +11,9 @@
             --nav-bg: #252525;
             --text-main: #ffffff;
             --text-muted: #a0a0a0;
-            --accent-idle: #03dac6; /* Teal */
-            --accent-occupied: #96cb39; /* Green */
-            --accent-warning: #cf6679; /* Red */
+            --accent-idle: #03dac6;
+            --accent-occupied: #96cb39;
+            --accent-warning: #cf6679;
         }
 
         body {
@@ -60,7 +60,6 @@
             border-bottom-color: var(--accent-idle);
         }
 
-        /* View Containers */
         .view-content {
             flex: 1;
             padding: 20px;
@@ -72,7 +71,7 @@
             display: block;
         }
 
-        /* LIVE STATUS GRID */
+        /* LIVE STATUS GRID (2x2) */
         .status-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -99,41 +98,57 @@
         .mini-card.warning-state { border-color: var(--accent-warning); }
 
         .mini-label { font-size: 0.9rem; font-weight: 700; letter-spacing: 3px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 5px; }
-        .mini-title { font-size: 2rem; font-weight: bold; margin: 10px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .mini-timer { font-size: 4rem; font-weight: bold; font-variant-numeric: tabular-nums; letter-spacing: -2px; }
-        .mini-range { font-size: 1.1rem; color: var(--text-muted); margin-top: 10px; }
+        .mini-title { font-size: 1.8rem; font-weight: bold; margin: 10px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mini-timer { font-size: 3.5rem; font-weight: bold; font-variant-numeric: tabular-nums; letter-spacing: -2px; }
+        .mini-range { font-size: 1rem; color: var(--text-muted); margin-top: 10px; }
 
-        /* BOOKINGS LIST */
-        .bookings-container { max-width: 900px; margin: 0 auto; padding-bottom: 40px; }
-        .bookings-section { margin-bottom: 40px; }
-        .section-header { border-left: 5px solid var(--accent-idle); padding-left: 15px; margin-bottom: 15px; font-size: 1.6rem; font-weight: bold; }
+        /* DAILY SCHEDULE GRID (4 Columns) */
+        .bookings-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* Force 4 columns */
+            gap: 15px;
+            align-items: start;
+        }
+
+        .bookings-section {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 15px;
+            border-radius: 15px;
+            min-height: 80vh;
+        }
+
+        .section-header { 
+            border-bottom: 2px solid var(--accent-idle); 
+            padding-bottom: 10px;
+            margin-bottom: 15px; 
+            font-size: 1.2rem; 
+            font-weight: bold; 
+            text-align: center;
+            text-transform: uppercase;
+        }
         
         .booking-row {
             background: var(--card-bg);
             margin-bottom: 8px;
-            padding: 18px 25px;
-            border-radius: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-left: 5px solid var(--accent-occupied);
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-occupied);
         }
 
         .gap-row {
-            background: rgba(255, 255, 255, 0.03);
-            margin: 12px 0;
-            padding: 12px 25px;
-            border-radius: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            background: rgba(255, 255, 255, 0.05);
+            margin: 8px 0;
+            padding: 8px;
+            border-radius: 8px;
             border: 1px dashed #444;
             color: var(--text-muted);
             font-style: italic;
+            font-size: 0.85rem;
+            text-align: center;
         }
 
-        .booking-info { font-weight: 600; font-size: 1.2rem; }
-        .booking-time { font-family: monospace; color: var(--accent-idle); font-size: 1.1rem; }
+        .booking-info { font-weight: 600; font-size: 1rem; display: block; margin-bottom: 4px; }
+        .booking-time { font-family: monospace; color: var(--accent-idle); font-size: 0.9rem; }
 
         /* Modal */
         #pass-modal {
@@ -153,14 +168,12 @@
     </nav>
 
     <div id="status-view" class="view-content active">
-        <div class="status-grid" id="status-grid-container">
-            </div>
+        <div class="status-grid" id="status-grid-container"></div>
     </div>
 
     <div id="bookings-view" class="view-content">
-        <div class="bookings-container" id="bookings-list">
-            <h2 style="text-align: center; color: var(--text-muted); margin-top: 50px;">Fetching Calendar Data...</h2>
-        </div>
+        <div class="bookings-grid" id="bookings-list">
+            </div>
     </div>
 
     <div id="pass-modal">
@@ -170,9 +183,6 @@
     </div>
 
     <script>
-        // ==========================================
-        // CONFIGURATION
-        // ==========================================
         const API_KEY = 'AIzaSyDHxd0Ms4jv6qXcBu0Od9vm3B1IeniOtTo';
         const CALENDAR_ID = 'c_49229d9cac9c5624fe5d288c9356e492658134943d61459600373109dbf8379b@group.calendar.google.com';
         const LOCATIONS = ["Bay 1", "Bay 2", "Bay 3", "Conference"];
@@ -180,21 +190,14 @@
 
         let facilityState = {}; 
         LOCATIONS.forEach(loc => {
-            facilityState[loc] = {
-                targetDate: null,
-                isOccupied: false,
-                allEvents: []
-            };
+            facilityState[loc] = { targetDate: null, isOccupied: false, allEvents: [] };
         });
 
-        // ==========================================
-        // UI & NAVIGATION
-        // ==========================================
         function switchTab(tab) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.view-content').forEach(view => view.classList.remove('active'));
             
-            const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.innerText.toLowerCase().includes(tab));
+            const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.innerText.toLowerCase().includes(tab.replace('view','')));
             if(activeBtn) activeBtn.classList.add('active');
             
             document.getElementById(`${tab}-view`).classList.add('active');
@@ -216,9 +219,6 @@
             }).join('');
         }
 
-        // ==========================================
-        // DATA FETCHING
-        // ==========================================
         async function fetchAllCalendars() {
             const startOfDay = new Date();
             startOfDay.setHours(0,0,0,0);
@@ -237,12 +237,9 @@
                     processLocationData(loc, locEvents);
                 });
                 
-                // If we are on the bookings page, refresh it
                 if(document.getElementById('bookings-view').classList.contains('active')) renderBookings();
                 
-            } catch (e) {
-                console.error("Calendar Sync Error:", e);
-            }
+            } catch (e) { console.error("Sync Error:", e); }
         }
 
         function processLocationData(loc, events) {
@@ -254,6 +251,8 @@
             const upcoming = events.find(e => new Date(e.start.dateTime || e.start.date) > now);
 
             const card = document.getElementById(`card-${id}`);
+            if(!card) return;
+
             const titleEl = document.getElementById(`title-${id}`);
             const rangeEl = document.getElementById(`range-${id}`);
             const timeOpt = { hour: 'numeric', minute: '2-digit' };
@@ -262,17 +261,13 @@
                 facilityState[loc].isOccupied = true;
                 facilityState[loc].targetDate = new Date(current.end.dateTime || current.end.date);
                 titleEl.innerText = current.summary;
-                const startStr = new Date(current.start.dateTime).toLocaleTimeString([], timeOpt);
-                const endStr = new Date(current.end.dateTime).toLocaleTimeString([], timeOpt);
-                rangeEl.innerText = `${startStr} - ${endStr}`;
+                rangeEl.innerText = `${new Date(current.start.dateTime).toLocaleTimeString([], timeOpt)} - ${new Date(current.end.dateTime).toLocaleTimeString([], timeOpt)}`;
                 card.className = 'mini-card occupied-state';
             } else if (upcoming) {
                 facilityState[loc].isOccupied = false;
                 facilityState[loc].targetDate = new Date(upcoming.start.dateTime || upcoming.start.date);
                 titleEl.innerText = "Next: " + upcoming.summary;
-                const startStr = new Date(upcoming.start.dateTime).toLocaleTimeString([], timeOpt);
-                const endStr = new Date(upcoming.end.dateTime).toLocaleTimeString([], timeOpt);
-                rangeEl.innerText = `Starts at ${startStr}`;
+                rangeEl.innerText = `Starts at ${new Date(upcoming.start.dateTime).toLocaleTimeString([], timeOpt)}`;
                 card.className = 'mini-card';
             } else {
                 facilityState[loc].targetDate = null;
@@ -283,36 +278,19 @@
             }
         }
 
-        // ==========================================
-        // RENDERERS & TIMERS
-        // ==========================================
         function updateTimers() {
             const now = new Date();
             LOCATIONS.forEach(loc => {
                 const state = facilityState[loc];
                 if (!state.targetDate) return;
-
                 const diff = state.targetDate - now;
                 const id = loc.replace(/\s+/g, '');
                 const timerEl = document.getElementById(`timer-${id}`);
-                const card = document.getElementById(`card-${id}`);
-
-                if (diff <= 0) {
-                    fetchAllCalendars();
-                    return;
-                }
-
-                // Color change to Red if less than 10 mins remaining in occupied bay
-                if (state.isOccupied && diff <= 600000) {
-                    card.classList.add('warning-state');
-                } else if (state.isOccupied) {
-                    card.classList.remove('warning-state');
-                }
-
+                if (diff <= 0) { fetchAllCalendars(); return; }
                 const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
                 const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
                 const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
-                timerEl.innerText = `${h}:${m}:${s}`;
+                if(timerEl) timerEl.innerText = `${h}:${m}:${s}`;
             });
         }
 
@@ -323,10 +301,7 @@
 
             LOCATIONS.forEach(loc => {
                 const events = facilityState[loc].allEvents;
-                html += `
-                    <div class="bookings-section">
-                        <div class="section-header">${loc}</div>
-                `;
+                html += `<div class="bookings-section"><div class="section-header">${loc}</div>`;
 
                 if (!events || events.length === 0) {
                     html += `<div class="gap-row">No bookings today</div>`;
@@ -335,19 +310,18 @@
                         const start = new Date(event.start.dateTime || event.start.date);
                         const end = new Date(event.end.dateTime || event.end.date);
 
-                        // Gap Detection
                         if (index > 0) {
                             const prevEnd = new Date(events[index-1].end.dateTime || events[index-1].end.date);
                             const gapMs = start - prevEnd;
-                            if (gapMs > 60000) { // Gap > 1 minute
-                                html += `<div class="gap-row"><span>— Free Time —</span><span>${Math.round(gapMs/60000)} mins</span></div>`;
+                            if (gapMs > 60000) { 
+                                html += `<div class="gap-row">Free: ${Math.round(gapMs/60000)}m</div>`;
                             }
                         }
 
                         html += `
                             <div class="booking-row">
-                                <div class="booking-info">${event.summary}</div>
-                                <div class="booking-time">${start.toLocaleTimeString([], timeOpt)} - ${end.toLocaleTimeString([], timeOpt)}</div>
+                                <span class="booking-info">${event.summary}</span>
+                                <span class="booking-time">${start.toLocaleTimeString([], timeOpt)} - ${end.toLocaleTimeString([], timeOpt)}</span>
                             </div>
                         `;
                     });
@@ -357,27 +331,16 @@
             list.innerHTML = html;
         }
 
-        // ==========================================
-        // SECURITY / PIN LOGIC
-        // ==========================================
         function checkPin() {
             const input = document.getElementById('pin-input');
-            if (input.value === ADMIN_PIN) {
-                document.getElementById('pass-modal').style.display = 'none';
-                input.value = "";
-            } else {
-                input.value = "";
-                input.placeholder = "WRONG PIN";
-                setTimeout(() => input.placeholder = "••••", 1000);
-            }
+            if (input.value === ADMIN_PIN) { document.getElementById('pass-modal').style.display = 'none'; input.value = ""; }
+            else { input.value = ""; input.placeholder = "WRONG PIN"; setTimeout(() => input.placeholder = "••••", 1000); }
         }
 
-        // Initial Boot
         createGrid();
         fetchAllCalendars();
         setInterval(updateTimers, 1000);
-        setInterval(fetchAllCalendars, 60000); // Sync data every minute
-
+        setInterval(fetchAllCalendars, 60000);
     </script>
 </body>
 </html>
