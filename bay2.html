@@ -10,7 +10,7 @@
             --card-bg: #1e1e1e;
             --text-main: #ffffff;
             --text-muted: #a0a0a0;
-            --accent-idle: #cf6679; /* Changed to Red for "Times Up" */
+            --accent-idle: #cf6679; /* Red for "Times Up" */
             --accent-occupied: #96cb39; /* Your specific Green */
             --accent-warning: #cf6679; /* Red for warning/Up Next */
         }
@@ -133,7 +133,6 @@
         .occupied-dot { background-color: var(--accent-occupied); box-shadow: 0 0 15px var(--accent-occupied); }
         .warning-dot { background-color: var(--accent-warning); box-shadow: 0 0 15px var(--accent-warning); }
 
-        /* Kiosk Modal */
         #pass-modal {
             display: none;
             position: fixed;
@@ -314,7 +313,7 @@
                 statusDot.classList.add('warning-dot');
                 timerDisplay.style.color = "var(--accent-warning)";
             } else {
-                mainCard.classList.add('idle-state'); // This is the Red Times Up state
+                mainCard.classList.add('idle-state'); 
                 statusDot.classList.add('warning-dot');
                 timerDisplay.style.color = "var(--accent-idle)";
             }
@@ -368,10 +367,10 @@
             isUpNext = false;
             
             document.getElementById('top-label').innerText = "STATUS";
-            document.getElementById('event-title').innerText = "Bay 2 Available";
+            document.getElementById('event-title').innerText = "Bay 2"; // Removed "Available"
             document.getElementById('timer').innerText = "TIMES UP";
-            document.getElementById('timer-label').innerText = ""; // Removed "Ready for Session"
-            document.getElementById('event-time-footer').style.visibility = "hidden"; // Removed "No Upcoming Bookings" footer
+            document.getElementById('timer-label').innerText = ""; 
+            document.getElementById('event-time-footer').style.visibility = "hidden"; 
             
             setUIState('idle');
             
