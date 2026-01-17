@@ -236,153 +236,7 @@
          */
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        function playChime(freq = 880) {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(freq / 2, audioCtx.currentTime + 0.5);
-            
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-            
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.5);
-        }
-
-        /**
-         * Kiosk Protection Logic
-         */
-        let tapCount = 0;
-        let tapTimer = null;
-
-        document.body.addEventListener('touchstart', (e) => {
-            // Browsers require a user interaction to enable audio
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-
-            if(document.getElementById('pass-modal').style.display === 'flex') return;
-
-            tapCount++;
-            if (tapTimer) clearTimeout(tapTimer);
-            
-            if (tapCount === 3) {
-                handleKioskToggle();
-                tapCount = 0;
-            } else {
-                tapTimer = setTimeout(() => {
-                    tapCount = 0;
-                }, 400); 
-            }
-        });
-
-        // Detect when fullscreen is exited
-        const fsEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
-        fsEvents.forEach(evt => document.addEventListener(evt, handleExitDetection));
-
-        function handleExitDetection() {
-            if (!isFullscreen() && !isInternalUnlock) {
-                document.getElementById('pass-modal').style.display = 'flex';
-                document.getElementById('pin-input').focus();
-            }
-        }
-
-        function isFullscreen() {
-            return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
-        }
-
-        function handleKioskToggle() {
-            if (!isFullscreen()) {
-                enterFullscreen();
-            } else {
-                document.getElementById('pass-modal').style.display = 'flex';
-                document.getElementById('pin-input').focus();
-            }
-        }
-
-        function enterFullscreen() {
-            const docEl = document.documentElement;
-            const request = docEl.requestFullscreen || docEl.webkitRequestFullScreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
-            if (request) request.call(docEl);
-        }
-
-        function checkPin() {
-            const input = document.getElementById('pin-input');
-            if (input.value === ADMIN_PIN) {
-                isInternalUnlock = true;
-                closeModal();
-                enterFullscreen();
-                setTimeout(() => { isInternalUnlock = false; }, 1000);
-            } else {
-                input.value = "";
-                input.placeholder = "WRONG";
-                setTimeout(() => { input.placeholder = "••••"; }, 1000);
-            }
-        }
-
-        function closeModal() {
-            document.getElementById('pass-modal').style.display = 'none';
-            document.getElementById('pin-input').value = "";
-        }
-
-        /**
-         * API & Timer Logic
-         */
-        async function fetchCalendar() {
-            if (isFetching) return;
-            const nowTime = Date.now();
-            if (nowTime - lastFetchTime < 2000) return;
-            isFetching = true;
-            lastFetchTime = nowTime;
-
-            const nowISO = new Date().toISOString();
-            const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?key=${API_KEY}&timeMin=${nowISO}&singleEvents=true&orderBy=startTime&q=${encodeURIComponent(SEARCH_TERM)}&maxResults=5`;
-
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                if (data.error) throw new Error(data.error.message);
-
-                let validEvent = data.items ? data.items.find(event => (event.summary || "").toLowerCase().includes(SEARCH_TERM.toLowerCase())) : null;
-
-                if (validEvent) processEvent(validEvent);
-                else handleNoEvents();
-                
-                document.getElementById('error-box').style.display = 'none';
-            } catch (error) {
-                document.getElementById('error-box').innerText = "Network Error: Retrying...";
-                document.getElementById('error-box').style.display = 'block';
-            } finally {
-                isFetching = false;
-            }
-        }
-
-        function setUIState(state) {
-            const mainCard = document.getElementById('main-card');
-            const statusDot = document.getElementById('status-dot');
-            const timerDisplay = document.getElementById('timer');
-
-            mainCard.classList.remove('occupied-state', 'warning-state');
-            statusDot.classList.remove('occupied-dot', 'warning-dot');
-
-            if (state === 'occupied') {
-                mainCard.classList.add('occupied-state');
-                statusDot.classList.add('occupied-dot');
-                timerDisplay.style.color = "var(--accent-occupied)";
-            } else if (state === 'warning') {
-                mainCard.classList.add('warning-state');
-                statusDot.classList.add('warning-dot');
-                timerDisplay.style.color = "var(--accent-warning)";
-            } else {
-                // Idle or default
-                timerDisplay.style.color = "var(--text-main)";
-            }
-        }
+        // --- Replace your existing script functions with these updated versions ---
 
         function processEvent(event) {
             const title = event.summary;
@@ -391,24 +245,38 @@
             const now = new Date();
             const topLabel = document.getElementById('top-label');
             const timerLabel = document.getElementById('timer-label');
+            const eventTitle = document.getElementById('event-title');
+            const timerDisplay = document.getElementById('timer');
 
+            // 1. CURRENTLY OCCUPIED
             if (now >= start && now < end) {
                 isOccupied = true;
                 currentTargetDate = end;
                 topLabel.innerText = "CURRENTLY OCCUPIED";
                 timerLabel.innerText = "Time Remaining";
-            } else {
+                eventTitle.innerText = title;
+                setUIState('occupied'); 
+            } 
+            // 2. UP NEXT (Within 10 minutes of starting)
+            else if (start - now <= 600000 && start - now > 0) {
                 isOccupied = false;
                 currentTargetDate = start;
                 topLabel.innerText = "UP NEXT";
                 timerLabel.innerText = "Starts In";
-                setUIState('idle');
-                // Reset chime flags for next session
+                eventTitle.innerText = title;
+                setUIState('warning'); // Using warning color to grab attention
+                
+                // Reset chime flags for the new upcoming session
                 chimePlayed10 = false;
                 chimePlayed5 = false;
                 chimePlayed0 = false;
+            } 
+            // 3. AVAILABLE / TIMES UP (Nothing active, next event is far away)
+            else {
+                handleNoEvents();
+                return; 
             }
-            document.getElementById('event-title').innerText = title;
+
             const timeOpt = { hour: 'numeric', minute: '2-digit' };
             document.getElementById('time-range').innerText = `${start.toLocaleTimeString([], timeOpt)} - ${end.toLocaleTimeString([], timeOpt)}`;
             updateTimer();
@@ -417,44 +285,62 @@
         function handleNoEvents() {
             currentTargetDate = null;
             isOccupied = false;
+            
+            const topLabel = document.getElementById('top-label');
+            const eventTitle = document.getElementById('event-title');
+            const timerDisplay = document.getElementById('timer');
+            const timerLabel = document.getElementById('timer-label');
+            const timeRange = document.getElementById('time-range');
+
+            // If we just finished an event, show "TIMES UP", otherwise "AVAILABLE"
+            topLabel.innerText = "STATUS";
+            eventTitle.innerText = "Bay 2 Available";
+            timerDisplay.innerText = "TIMES UP";
+            timerDisplay.style.color = "var(--accent-idle)";
+            timerLabel.innerText = "Ready for Session";
+            timeRange.innerText = "No current bookings";
+            
+            setUIState('idle');
+
+            // Reset Chimes
             chimePlayed10 = false;
             chimePlayed5 = false;
             chimePlayed0 = false;
-            document.getElementById('top-label').innerText = "STATUS";
-            document.getElementById('event-title').innerText = "Bay 2 Available";
-            document.getElementById('timer').innerText = "FREE";
-            document.getElementById('timer').style.color = "var(--accent-idle)";
-            document.getElementById('timer-label').innerText = "No upcoming events";
-            document.getElementById('time-range').innerText = "Calendar is clear";
-            setUIState('idle');
         }
 
         function updateTimer() {
-            if (!currentTargetDate) return;
+            // If no event is active or close, don't run the countdown logic
+            if (!currentTargetDate) {
+                // Ensure "TIMES UP" or "FREE" stays visible
+                if (document.getElementById('timer').innerText !== "TIMES UP") {
+                    handleNoEvents();
+                }
+                return;
+            }
+
             const now = new Date();
             const diff = currentTargetDate - now;
             
             if (diff <= 0) {
                 document.getElementById('timer').innerText = "00:00:00";
                 if (isOccupied && !chimePlayed0) {
-                    playChime(440); // Low chime for end of event
+                    playChime(440); 
                     chimePlayed0 = true;
                 }
-                fetchCalendar();
+                fetchCalendar(); // Refresh to see if we transition to "TIMES UP" or a new event
                 return;
             }
 
+            // Chime & Color Logic for Occupied State
             if (isOccupied) {
-                // Chime Logic
-                if (diff <= 300000 && !chimePlayed5) { // 5 Minutes
+                if (diff <= 300000 && !chimePlayed5) { 
                     playChime(1100); 
                     chimePlayed5 = true;
-                } else if (diff <= 600000 && !chimePlayed10) { // 10 Minutes
+                } else if (diff <= 600000 && !chimePlayed10) { 
                     playChime(880);
                     chimePlayed10 = true;
                 }
 
-                // UI Coloring Logic
                 if (diff <= 600000) {
                     setUIState('warning');
                 } else {
@@ -465,14 +351,17 @@
             const hours = Math.floor(diff / (1000 * 60 * 60));
             const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-            document.getElementById('timer').innerText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Format display
+            let displayTime = "";
+            if (hours > 0) displayTime += `${hours.toString().padStart(2, '0')}:`;
+            displayTime += `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            document.getElementById('timer').innerText = displayTime;
         }
-
-        fetchCalendar();
-        setInterval(updateTimer, 1000);
-        setInterval(fetchCalendar, 120000); 
 
     </script>
 </body>
 </html>
+
 
