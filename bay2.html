@@ -3,276 +3,306 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Facility Hub - Fire Edition</title>
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Bay 2 Monitor - Fire Edition</title>
     <style>
         :root {
             --bg-color: #121212;
             --card-bg: #1e1e1e;
-            --nav-bg: #252525;
             --text-main: #ffffff;
             --text-muted: #a0a0a0;
-            --accent-idle: #03dac6;
-            --accent-occupied: #96cb39;
-            --accent-warning: #cf6679;
+            --accent-idle: #cf6679; 
+            --accent-occupied: #96cb39; 
+            --accent-warning: #cf6679; 
         }
 
-        body, html {
+        body {
             background-color: var(--bg-color);
             color: var(--text-main);
-            font-family: sans-serif;
-            margin: 0; padding: 0;
-            height: 100%; width: 100%;
+            font-family: "Amazon Ember", Roboto, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
             overflow: hidden;
+            touch-action: manipulation;
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* Initial Start Overlay for Fire OS Fullscreen */
-        #start-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg-color); z-index: 200;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        .dashboard-card {
+            background-color: var(--card-bg);
+            padding: 2vh 5vw; 
+            border-radius: 24px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.5);
+            text-align: center;
+            width: 90vw;
+            max-width: 850px;
+            transition: border-color 0.4s ease;
+            border: 4px solid transparent; /* Thicker border for lower res screens */
+            will-change: border-color;
         }
 
-        #start-btn {
-            padding: 20px 40px; font-size: 1.5rem; background: var(--accent-idle);
-            border: none; border-radius: 12px; color: #000; font-weight: bold; cursor: pointer;
+        .logo-container {
+            margin-bottom: 2vh;
+            display: flex;
+            justify-content: center;
         }
 
-        /* Layout */
-        #main-wrapper { display: flex; flex-direction: column; height: 100vh; visibility: hidden; }
-
-        nav {
-            background: var(--nav-bg); display: flex; justify-content: center;
-            padding: 8px; gap: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        .logo-container img {
+            max-height: 20vh;
+            max-width: 80%;  
+            object-fit: contain;
         }
 
-        .tab-btn {
-            background: none; border: none; color: var(--text-muted);
-            font-size: 1rem; font-weight: bold; padding: 10px 20px;
-            text-transform: uppercase; border-bottom: 3px solid transparent;
+        .dashboard-card.occupied-state { border-color: var(--accent-occupied); }
+        .dashboard-card.warning-state { border-color: var(--accent-warning); }
+        .dashboard-card.idle-state { border-color: var(--accent-idle); }
+
+        .label {
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            color: var(--text-muted);
+            margin-bottom: 1vh;
         }
 
-        .tab-btn.active { color: var(--accent-idle); border-bottom-color: var(--accent-idle); }
-
-        .view-content { flex: 1; padding: 15px; overflow-y: auto; display: none; }
-        .view-content.active { display: block; }
-
-        /* GRID: Status */
-        .status-grid {
-            display: grid; grid-template-columns: repeat(2, 1fr);
-            grid-template-rows: repeat(2, 1fr); gap: 15px; height: 90%;
+        .event-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 2vh;
+            line-height: 1.1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .mini-card {
-            background: var(--card-bg); border-radius: 15px;
-            padding: 15px; text-align: center; border: 2px solid transparent;
-            display: flex; flex-direction: column; justify-content: center;
+        .timer-container {
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+            padding: 4vh 2vw;
+            margin: 2vh 0; 
+            border: 1px solid rgba(255,255,255,0.1);
         }
 
-        .mini-card.occupied-state { border-color: var(--accent-occupied); }
-        .mini-card.warning-state { border-color: var(--accent-warning); }
+        .timer {
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+            transition: color 0.3s;
+        }
 
-        .mini-label { font-size: 0.8rem; letter-spacing: 2px; color: var(--text-muted); text-transform: uppercase; }
-        .mini-title { font-size: 1.4rem; font-weight: bold; margin: 8px 0; }
-        .mini-timer { font-size: 3rem; font-weight: bold; font-family: monospace; }
-        .mini-range { font-size: 0.9rem; color: var(--text-muted); margin-top: 5px; }
+        /* State-based font sizing for Fire Tablets */
+        .occupied-state .timer, .warning-state .timer { font-size: 8rem; letter-spacing: -4px; }
+        .idle-state .timer { font-size: 5.5rem; letter-spacing: -1px; }
 
-        /* GRID: Schedule (4 Columns) */
-        .bookings-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-        .bookings-section { background: rgba(255,255,255,0.02); padding: 10px; border-radius: 10px; }
-        .section-header { border-bottom: 2px solid var(--accent-idle); padding-bottom: 5px; margin-bottom: 10px; font-size: 1rem; text-align: center; font-weight: bold; }
-        
-        .booking-row { background: var(--card-bg); margin-bottom: 5px; padding: 8px; border-radius: 5px; border-left: 3px solid var(--accent-occupied); font-size: 0.85rem; }
-        .completed-booking { border-left-color: var(--accent-warning); opacity: 0.5; }
-        
-        .gap-row { background: rgba(255,255,255,0.05); margin: 5px 0; padding: 5px; border-radius: 5px; border: 1px dashed #444; color: var(--text-muted); font-size: 0.75rem; text-align: center; }
-        
-        .booking-info { font-weight: bold; display: block; margin-bottom: 2px; color: #fff; }
-        .booking-time { color: var(--accent-idle); font-family: monospace; }
+        .sub-timer {
+            margin-top: 1vh;
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        .event-time {
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            min-height: 30px;
+        }
+
+        .status-dot {
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .occupied-dot { background-color: var(--accent-occupied); box-shadow: 0 0 15px var(--accent-occupied); }
+        .warning-dot { background-color: var(--accent-warning); box-shadow: 0 0 15px var(--accent-warning); }
 
         #pass-modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 300; justify-content: center; align-items: center; flex-direction: column;
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.98);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        #pass-modal input {
+            background: #2a2a2a;
+            border: 2px solid #444;
+            color: white;
+            padding: 15px;
+            font-size: 2rem;
+            text-align: center;
+            border-radius: 8px;
+            width: 200px;
+            margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
 
-    <div id="start-overlay">
-        <div style="margin-bottom: 20px; text-align: center;">
-            <h2 style="margin:0">Facility Monitor</h2>
-            <p style="color:var(--text-muted)">Ready to Sync</p>
+    <div class="dashboard-card" id="main-card">
+        <div class="logo-container">
+            <img src="https://m4gic-f0x.github.io/teesheet/b9.png" alt="Logo">
         </div>
-        <button id="start-btn" onclick="initDashboard()">START DASHBOARD</button>
+
+        <div class="label" id="top-label">Syncing...</div>
+        <div class="event-title" id="event-title">---</div>
+        
+        <div class="timer-container">
+            <div class="timer" id="timer">--:--</div>
+            <div class="sub-timer" id="timer-label">Checking Schedule</div>
+        </div>
+
+        <div class="event-time" id="event-time-footer">
+            <span class="status-dot" id="status-dot"></span>
+            <span id="time-range"></span>
+        </div>
     </div>
 
-    <div id="main-wrapper">
-        <nav>
-            <button class="tab-btn active" id="btn-status" onclick="switchTab('status')">Live Status</button>
-            <button class="tab-btn" id="btn-bookings" onclick="switchTab('bookings')">Daily Schedule</button>
-        </nav>
-
-        <div id="status-view" class="view-content active">
-            <div class="status-grid" id="status-grid-container"></div>
-        </div>
-
-        <div id="bookings-view" class="view-content">
-            <div class="bookings-grid" id="bookings-list"></div>
-        </div>
+    <div id="pass-modal">
+        <div class="label" style="color: white;">Kiosk Locked</div>
+        <input type="password" id="pin-input" placeholder="••••" maxlength="4" inputmode="numeric">
+        <button style="padding: 15px 30px; font-size: 1.2rem; background: var(--accent-warning); border: none; color: white; border-radius: 8px; font-weight: bold;" onclick="checkPin()">Unlock</button>
     </div>
 
     <script>
         const API_KEY = 'AIzaSyDHxd0Ms4jv6qXcBu0Od9vm3B1IeniOtTo';
         const CALENDAR_ID = 'c_49229d9cac9c5624fe5d288c9356e492658134943d61459600373109dbf8379b@group.calendar.google.com';
-        const LOCATIONS = ["Bay 1", "Bay 2", "Bay 3", "Conference"];
+        const SEARCH_TERM = "Bay 2"; 
+        const ADMIN_PIN = "1234";
 
-        let facilityState = {}; 
-        LOCATIONS.forEach(function(loc) { facilityState[loc] = { targetDate: null, isOccupied: false, allEvents: [] }; });
+        let currentTargetDate = null;
+        let isFetching = false;
+        let isOccupied = false;
+        let isUpNext = false;
+        let chimePlayed10 = false, chimePlayed5 = false, chimePlayed0 = false;
 
-        function initDashboard() {
-            // Trigger Fullscreen
-            const doc = window.document.documentElement;
-            if (doc.requestFullscreen) doc.requestFullscreen();
-            else if (doc.mozRequestFullScreen) doc.mozRequestFullScreen();
-            else if (doc.webkitRequestFullScreen) doc.webkitRequestFullScreen();
-            else if (doc.msRequestFullscreen) doc.msRequestFullscreen();
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
 
-            // Reveal UI
-            document.getElementById('start-overlay').style.display = 'none';
-            document.getElementById('main-wrapper').style.visibility = 'visible';
-            
-            createGrid();
-            fetchAllCalendars();
-            setInterval(updateTimers, 1000);
-            setInterval(fetchAllCalendars, 60000);
+        function initAudio() {
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
-            document.querySelectorAll('.view-content').forEach(function(v){ v.classList.remove('active'); });
-            
-            document.getElementById('btn-' + tab).classList.add('active');
-            document.getElementById(tab + '-view').classList.add('active');
-            if(tab === 'bookings') renderBookings();
+        function playChime(freq = 880) {
+            initAudio();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.5);
         }
 
-        function createGrid() {
-            const container = document.getElementById('status-grid-container');
-            container.innerHTML = LOCATIONS.map(function(loc) {
-                const id = loc.replace(/\s+/g, '');
-                return '<div class="mini-card" id="card-'+id+'">' +
-                       '<div class="mini-label">'+loc+'</div>' +
-                       '<div class="mini-title" id="title-'+id+'">Syncing...</div>' +
-                       '<div class="mini-timer" id="timer-'+id+'">00:00:00</div>' +
-                       '<div class="mini-range" id="range-'+id+'">...</div>' +
-                       '</div>';
-            }).join('');
-        }
+        // Tap Logic for Admin
+        let tapCount = 0, tapTimer = null;
+        document.body.addEventListener('click', () => {
+            initAudio();
+            tapCount++;
+            clearTimeout(tapTimer);
+            if (tapCount === 3) { document.getElementById('pass-modal').style.display = 'flex'; tapCount = 0; }
+            tapTimer = setTimeout(() => tapCount = 0, 500);
+        });
 
-        function fetchAllCalendars() {
-            const start = new Date(); start.setHours(0,0,0,0);
-            const end = new Date(); end.setHours(23,59,59,999);
-            const url = 'https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(CALENDAR_ID) + 
-                        '/events?key=' + API_KEY + '&timeMin=' + start.toISOString() + 
-                        '&timeMax=' + end.toISOString() + '&singleEvents=true&orderBy=startTime';
-
-            fetch(url).then(function(res) { return res.json(); }).then(function(data) {
-                const events = data.items || [];
-                LOCATIONS.forEach(function(loc) {
-                    const locEvents = events.filter(function(e) { 
-                        return (e.summary || "").toLowerCase().indexOf(loc.toLowerCase()) > -1; 
-                    });
-                    processLocationData(loc, locEvents);
-                });
-                if(document.getElementById('bookings-view').classList.contains('active')) renderBookings();
-            }).catch(function(e) { console.error(e); });
-        }
-
-        function processLocationData(loc, events) {
-            const now = new Date();
-            const id = loc.replace(/\s+/g, '');
-            facilityState[loc].allEvents = events;
-            
-            const current = events.find(function(e) {
-                return new Date(e.start.dateTime || e.start.date) <= now && new Date(e.end.dateTime || e.end.date) > now;
-            });
-            const upcoming = events.find(function(e) {
-                return new Date(e.start.dateTime || e.start.date) > now;
-            });
-
-            const card = document.getElementById('card-' + id);
-            const titleEl = document.getElementById('title-' + id);
-            const rangeEl = document.getElementById('range-' + id);
-            const timeOpt = { hour: 'numeric', minute: '2-digit' };
-
-            if (current) {
-                facilityState[loc].isOccupied = true;
-                facilityState[loc].targetDate = new Date(current.end.dateTime || current.end.date);
-                titleEl.innerText = current.summary;
-                rangeEl.innerText = new Date(current.start.dateTime).toLocaleTimeString([], timeOpt) + " - " + new Date(current.end.dateTime).toLocaleTimeString([], timeOpt);
-                card.className = 'mini-card occupied-state';
-            } else if (upcoming) {
-                facilityState[loc].isOccupied = false;
-                facilityState[loc].targetDate = new Date(upcoming.start.dateTime || upcoming.start.date);
-                titleEl.innerText = "Next: " + upcoming.summary;
-                rangeEl.innerText = "Starts at " + new Date(upcoming.start.dateTime).toLocaleTimeString([], timeOpt);
-                card.className = 'mini-card';
+        function checkPin() {
+            if (document.getElementById('pin-input').value === ADMIN_PIN) {
+                document.getElementById('pass-modal').style.display = 'none';
+                document.getElementById('pin-input').value = "";
             } else {
-                facilityState[loc].targetDate = null;
-                titleEl.innerText = "Available";
-                document.getElementById('timer-' + id).innerText = "FREE";
-                rangeEl.innerText = "Clear Schedule";
-                card.className = 'mini-card';
+                document.getElementById('pin-input').value = "";
             }
         }
 
-        function updateTimers() {
-            const now = new Date();
-            LOCATIONS.forEach(function(loc) {
-                const state = facilityState[loc];
-                if (!state.targetDate) return;
-                const diff = state.targetDate - now;
-                const id = loc.replace(/\s+/g, '');
-                const timerEl = document.getElementById('timer-' + id);
-                if (diff <= 0) { fetchAllCalendars(); return; }
-                const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
-                const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
-                const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
-                if(timerEl) timerEl.innerText = h + ":" + m + ":" + s;
-            });
+        async function fetchCalendar() {
+            if (isFetching) return;
+            isFetching = true;
+            try {
+                const nowISO = new Date().toISOString();
+                const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?key=${API_KEY}&timeMin=${nowISO}&singleEvents=true&orderBy=startTime&q=${encodeURIComponent(SEARCH_TERM)}&maxResults=3`;
+                const response = await fetch(url);
+                const data = await response.json();
+                const validEvent = data.items ? data.items.find(e => (e.summary || "").toLowerCase().includes(SEARCH_TERM.toLowerCase())) : null;
+                validEvent ? processEvent(validEvent) : handleNoEvents();
+            } catch (e) { console.error("Fetch failed"); }
+            isFetching = false;
         }
 
-        function renderBookings() {
-            const list = document.getElementById('bookings-list');
+        function processEvent(event) {
             const now = new Date();
-            let html = '';
-            const timeOpt = { hour: '2-digit', minute: '2-digit' };
+            const start = new Date(event.start.dateTime || event.start.date);
+            const end = new Date(event.end.dateTime || event.end.date);
+            const diffToStart = start - now;
 
-            LOCATIONS.forEach(function(loc) {
-                const events = facilityState[loc].allEvents;
-                html += '<div class="bookings-section"><div class="section-header">'+loc+'</div>';
-                if (!events || events.length === 0) {
-                    html += '<div class="gap-row">No bookings</div>';
-                } else {
-                    events.forEach(function(event, index) {
-                        const start = new Date(event.start.dateTime || event.start.date);
-                        const end = new Date(event.end.dateTime || event.end.date);
-                        const isCompleted = now > end;
-
-                        if (index > 0) {
-                            const prevEnd = new Date(events[index-1].end.dateTime || events[index-1].end.date);
-                            const gapMs = start - prevEnd;
-                            if (gapMs > 60000) html += '<div class="gap-row">Gap: '+Math.round(gapMs/60000)+'m</div>';
-                        }
-                        html += '<div class="booking-row '+(isCompleted ? 'completed-booking' : '')+'">' +
-                                '<span class="booking-info">'+event.summary+'</span>' +
-                                '<span class="booking-time">'+start.toLocaleTimeString([], timeOpt)+' - '+end.toLocaleTimeString([], timeOpt)+'</span>' +
-                                '</div>';
-                    });
-                }
-                html += '</div>';
-            });
-            list.innerHTML = html;
+            if (now >= start && now < end) {
+                isOccupied = true; isUpNext = false;
+                currentTargetDate = end;
+                updateUI("CURRENTLY OCCUPIED", "Time Remaining", event.summary, 'occupied', true);
+            } else if (diffToStart > 0 && diffToStart <= 600000) {
+                isOccupied = false; isUpNext = true;
+                currentTargetDate = start;
+                updateUI("UP NEXT", "Starts In", event.summary, 'warning', true);
+            } else {
+                handleNoEvents();
+                return;
+            }
+            const timeOpt = { hour: 'numeric', minute: '2-digit' };
+            document.getElementById('time-range').innerText = `${start.toLocaleTimeString([], timeOpt)} - ${end.toLocaleTimeString([], timeOpt)}`;
         }
+
+        function updateUI(top, label, title, state, showFooter) {
+            document.getElementById('top-label').innerText = top;
+            document.getElementById('timer-label').innerText = label;
+            document.getElementById('event-title').innerText = title;
+            document.getElementById('event-time-footer').style.visibility = showFooter ? "visible" : "hidden";
+            
+            const card = document.getElementById('main-card');
+            const dot = document.getElementById('status-dot');
+            card.className = `dashboard-card ${state}-state`;
+            dot.className = `status-dot ${state === 'occupied' ? 'occupied-dot' : 'warning-dot'}`;
+        }
+
+        function handleNoEvents() {
+            currentTargetDate = null;
+            isOccupied = false; isUpNext = false;
+            updateUI("STATUS", "", "Bay 2", 'idle', false);
+            document.getElementById('timer').innerText = "SESSION COMPLETE";
+            chimePlayed10 = chimePlayed5 = chimePlayed0 = false;
+        }
+
+        function updateTimer() {
+            if (!currentTargetDate) return;
+            const diff = currentTargetDate - new Date();
+            if (diff <= 0) { fetchCalendar(); return; }
+
+            if (isOccupied) {
+                if (diff <= 300000 && !chimePlayed5) { playChime(1100); chimePlayed5 = true; }
+                else if (diff <= 600000 && !chimePlayed10) { playChime(880); chimePlayed10 = true; }
+            }
+
+            const h = Math.floor(diff / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+            document.getElementById('timer').innerText = (h > 0 ? h + ":" : "") + m.toString().padStart(2, '0') + ":" + s.toString().padStart(2, '0');
+        }
+
+        setInterval(updateTimer, 1000);
+        setInterval(fetchCalendar, 60000);
+        fetchCalendar();
     </script>
 </body>
 </html>
