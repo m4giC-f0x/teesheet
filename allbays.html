@@ -213,35 +213,47 @@
         }
 
         function processLocationData(loc, events) {
-            const now = new Date();
-            const locKey = loc.replace(' ', '');
-            facilityState[loc].allEvents = events;
+    const now = new Date();
+    const locKey = loc.replace(' ', '');
+    facilityState[loc].allEvents = events;
 
-            const current = events.find(e => new Date(e.start.dateTime || e.start.date) <= now && new Date(e.end.dateTime || e.end.date) > now);
-            const upcoming = events.find(e => new Date(e.start.dateTime || e.start.date) > now);
+    const current = events.find(e => new Date(e.start.dateTime || e.start.date) <= now && new Date(e.end.dateTime || e.end.date) > now);
+    const upcoming = events.find(e => new Date(e.start.dateTime || e.start.date) > now);
 
-            const card = document.getElementById(`card-${locKey}`);
-            const titleEl = document.getElementById(`title-${locKey}`);
-            const rangeEl = document.getElementById(`range-${locKey}`);
+    const card = document.getElementById(`card-${locKey}`);
+    const titleEl = document.getElementById(`title-${locKey}`);
+    const rangeEl = document.getElementById(`range-${locKey}`); // This is the "Checking..." element
+    
+    const timeOpt = { hour: 'numeric', minute: '2-digit' };
 
-            if (current) {
-                facilityState[loc].isOccupied = true;
-                facilityState[loc].targetDate = new Date(current.end.dateTime || current.end.date);
-                titleEl.innerText = current.summary;
-                card.className = 'mini-card occupied-state';
-            } else if (upcoming) {
-                facilityState[loc].isOccupied = false;
-                facilityState[loc].targetDate = new Date(upcoming.start.dateTime || upcoming.start.date);
-                titleEl.innerText = "Next: " + upcoming.summary;
-                card.className = 'mini-card';
-            } else {
-                facilityState[loc].targetDate = null;
-                titleEl.innerText = "Available";
-                document.getElementById(`timer-${locKey}`).innerText = "FREE";
-                rangeEl.innerText = "No bookings today";
-                card.className = 'mini-card';
-            }
-        }
+    if (current) {
+        facilityState[loc].isOccupied = true;
+        const end = new Date(current.end.dateTime || current.end.date);
+        const start = new Date(current.start.dateTime || current.start.date);
+        facilityState[loc].targetDate = end;
+        
+        titleEl.innerText = current.summary;
+        // UPDATE: Replaces "Checking..." with the actual time range
+        rangeEl.innerText = `${start.toLocaleTimeString([], timeOpt)} - ${end.toLocaleTimeString([], timeOpt)}`;
+        card.className = 'mini-card occupied-state';
+    } else if (upcoming) {
+        facilityState[loc].isOccupied = false;
+        const start = new Date(upcoming.start.dateTime || upcoming.start.date);
+        const end = new Date(upcoming.end.dateTime || upcoming.end.date);
+        facilityState[loc].targetDate = start;
+        
+        titleEl.innerText = "Next: " + upcoming.summary;
+        // UPDATE: Replaces "Checking..." with the upcoming time range
+        rangeEl.innerText = `${start.toLocaleTimeString([], timeOpt)} - ${end.toLocaleTimeString([], timeOpt)}`;
+        card.className = 'mini-card';
+    } else {
+        facilityState[loc].targetDate = null;
+        titleEl.innerText = "Available";
+        document.getElementById(`timer-${locKey}`).innerText = "FREE";
+        rangeEl.innerText = "No bookings today";
+        card.className = 'mini-card';
+    }
+}
 
         function updateTimers() {
             const now = new Date();
