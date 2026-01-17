@@ -10,9 +10,9 @@
             --card-bg: #1e1e1e;
             --text-main: #ffffff;
             --text-muted: #a0a0a0;
-            --accent-idle: #03dac6; /* Teal for "Available / Times Up" */
+            --accent-idle: #cf6679; /* Changed to Red for "Times Up" */
             --accent-occupied: #96cb39; /* Your specific Green */
-            --accent-warning: #cf6679; /* Red for warning */
+            --accent-warning: #cf6679; /* Red for warning/Up Next */
         }
 
         body {
@@ -60,6 +60,7 @@
             object-fit: contain;
         }
 
+        /* Border State Classes */
         .dashboard-card.occupied-state { border-color: var(--accent-occupied); }
         .dashboard-card.warning-state { border-color: var(--accent-warning); }
         .dashboard-card.idle-state { border-color: var(--accent-idle); }
@@ -132,6 +133,7 @@
         .occupied-dot { background-color: var(--accent-occupied); box-shadow: 0 0 15px var(--accent-occupied); }
         .warning-dot { background-color: var(--accent-warning); box-shadow: 0 0 15px var(--accent-warning); }
 
+        /* Kiosk Modal */
         #pass-modal {
             display: none;
             position: fixed;
@@ -179,7 +181,7 @@
             <div class="sub-timer" id="timer-label">Syncing</div>
         </div>
 
-        <div class="event-time">
+        <div class="event-time" id="event-time-footer">
             <span class="status-dot" id="status-dot"></span>
             <span id="time-range">Establishing Connection...</span>
         </div>
@@ -196,14 +198,10 @@
     </div>
 
     <script>
-        // ==========================================
-        // CONFIGURATION
-        // ==========================================
         const API_KEY = 'AIzaSyDHxd0Ms4jv6qXcBu0Od9vm3B1IeniOtTo';
         const CALENDAR_ID = 'c_49229d9cac9c5624fe5d288c9356e492658134943d61459600373109dbf8379b@group.calendar.google.com';
         const SEARCH_TERM = "Bay 2"; 
         const ADMIN_PIN = "1234";
-        // ==========================================
 
         let currentTargetDate = null;
         let isFetching = false; 
@@ -316,7 +314,8 @@
                 statusDot.classList.add('warning-dot');
                 timerDisplay.style.color = "var(--accent-warning)";
             } else {
-                mainCard.classList.add('idle-state');
+                mainCard.classList.add('idle-state'); // This is the Red Times Up state
+                statusDot.classList.add('warning-dot');
                 timerDisplay.style.color = "var(--accent-idle)";
             }
         }
@@ -329,10 +328,10 @@
             const topLabel = document.getElementById('top-label');
             const timerLabel = document.getElementById('timer-label');
             const eventTitle = document.getElementById('event-title');
+            const footer = document.getElementById('event-time-footer');
             
             const diffToStart = start - now;
 
-            // STATE 1: Currently Occupied
             if (now >= start && now < end) {
                 isOccupied = true;
                 isUpNext = false;
@@ -340,9 +339,9 @@
                 topLabel.innerText = "CURRENTLY OCCUPIED";
                 timerLabel.innerText = "Time Remaining";
                 eventTitle.innerText = title;
+                footer.style.visibility = "visible";
                 setUIState('occupied');
             } 
-            // STATE 2: Up Next (10 minutes before next event)
             else if (diffToStart > 0 && diffToStart <= 600000) {
                 isOccupied = false;
                 isUpNext = true;
@@ -350,9 +349,9 @@
                 topLabel.innerText = "UP NEXT";
                 timerLabel.innerText = "Starts In";
                 eventTitle.innerText = title;
+                footer.style.visibility = "visible";
                 setUIState('warning');
             } 
-            // STATE 3: Times Up / Idle (More than 10 mins away or no event)
             else {
                 handleNoEvents();
                 return;
@@ -371,8 +370,9 @@
             document.getElementById('top-label').innerText = "STATUS";
             document.getElementById('event-title').innerText = "Bay 2 Available";
             document.getElementById('timer').innerText = "TIMES UP";
-            document.getElementById('timer-label').innerText = "Ready for Session";
-            document.getElementById('time-range').innerText = "No upcoming bookings";
+            document.getElementById('timer-label').innerText = ""; // Removed "Ready for Session"
+            document.getElementById('event-time-footer').style.visibility = "hidden"; // Removed "No Upcoming Bookings" footer
+            
             setUIState('idle');
             
             chimePlayed10 = false;
@@ -403,7 +403,6 @@
                 else setUIState('occupied');
             }
 
-            // Logic to flip from Times Up to Up Next if we hit the 10m mark mid-tick
             if (!isOccupied && !isUpNext && diff <= 600000) {
                 fetchCalendar();
             }
@@ -421,7 +420,7 @@
 
         fetchCalendar();
         setInterval(updateTimer, 1000);
-        setInterval(fetchCalendar, 60000); // Check API every 1 minute for better accuracy
+        setInterval(fetchCalendar, 60000); 
 
     </script>
 </body>
