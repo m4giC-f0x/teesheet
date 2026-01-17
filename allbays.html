@@ -13,138 +13,88 @@
             --text-muted: #a0a0a0;
             --accent-idle: #03dac6;
             --accent-occupied: #96cb39;
-            --accent-warning: #cf6679;
+            --accent-warning: #cf6679; /* Red for Warnings/Completed */
         }
 
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-            user-select: none;
-            -webkit-user-select: none;
+            margin: 0; padding: 0;
+            display: flex; flex-direction: column;
+            height: 100vh; overflow: hidden;
+            user-select: none; -webkit-user-select: none;
         }
 
-        /* Navigation Tabs */
+        /* Navigation */
         nav {
             background: var(--nav-bg);
-            display: flex;
-            justify-content: center;
-            padding: 10px;
-            gap: 20px;
+            display: flex; justify-content: center;
+            padding: 10px; gap: 20px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             z-index: 10;
         }
 
         .tab-btn {
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            font-size: 1.1rem;
-            font-weight: bold;
-            padding: 12px 25px;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-            transition: 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            background: none; border: none;
+            color: var(--text-muted); font-size: 1.1rem; font-weight: bold;
+            padding: 12px 25px; cursor: pointer;
+            border-bottom: 3px solid transparent; transition: 0.3s;
+            text-transform: uppercase; letter-spacing: 1px;
         }
 
-        .tab-btn.active {
-            color: var(--accent-idle);
-            border-bottom-color: var(--accent-idle);
-        }
+        .tab-btn.active { color: var(--accent-idle); border-bottom-color: var(--accent-idle); }
 
-        .view-content {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-            display: none;
-        }
-
-        .view-content.active {
-            display: block;
-        }
+        .view-content { flex: 1; padding: 20px; overflow-y: auto; display: none; }
+        .view-content.active { display: block; }
 
         /* LIVE STATUS GRID (2x2) */
         .status-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            grid-template-rows: repeat(2, 1fr);
-            gap: 20px;
-            height: 100%;
-            box-sizing: border-box;
+            display: grid; grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, 1fr); gap: 20px;
+            height: 100%; box-sizing: border-box;
         }
 
         .mini-card {
-            background-color: var(--card-bg);
-            border-radius: 20px;
-            padding: 20px;
-            text-align: center;
-            border: 2px solid transparent;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            transition: border-color 0.5s, transform 0.3s;
+            background-color: var(--card-bg); border-radius: 20px;
+            padding: 20px; text-align: center; border: 2px solid transparent;
+            display: flex; flex-direction: column; justify-content: center;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
 
         .mini-card.occupied-state { border-color: var(--accent-occupied); }
         .mini-card.warning-state { border-color: var(--accent-warning); }
 
-        .mini-label { font-size: 0.9rem; font-weight: 700; letter-spacing: 3px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 5px; }
+        .mini-label { font-size: 0.9rem; font-weight: 700; letter-spacing: 3px; color: var(--text-muted); text-transform: uppercase; }
         .mini-title { font-size: 1.8rem; font-weight: bold; margin: 10px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .mini-timer { font-size: 3.5rem; font-weight: bold; font-variant-numeric: tabular-nums; letter-spacing: -2px; }
+        .mini-timer { font-size: 3.5rem; font-weight: bold; font-variant-numeric: tabular-nums; }
         .mini-range { font-size: 1rem; color: var(--text-muted); margin-top: 10px; }
 
         /* DAILY SCHEDULE GRID (4 Columns) */
         .bookings-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr); /* Force 4 columns */
-            gap: 15px;
-            align-items: start;
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: 15px; align-items: start;
         }
 
-        .bookings-section {
-            background: rgba(255, 255, 255, 0.02);
-            padding: 15px;
-            border-radius: 15px;
-            min-height: 80vh;
-        }
-
-        .section-header { 
-            border-bottom: 2px solid var(--accent-idle); 
-            padding-bottom: 10px;
-            margin-bottom: 15px; 
-            font-size: 1.2rem; 
-            font-weight: bold; 
-            text-align: center;
-            text-transform: uppercase;
-        }
+        .bookings-section { background: rgba(255, 255, 255, 0.02); padding: 15px; border-radius: 15px; min-height: 80vh; }
+        .section-header { border-bottom: 2px solid var(--accent-idle); padding-bottom: 10px; margin-bottom: 15px; font-size: 1.2rem; font-weight: bold; text-align: center; text-transform: uppercase; }
         
         .booking-row {
-            background: var(--card-bg);
-            margin-bottom: 8px;
-            padding: 12px;
-            border-radius: 8px;
+            background: var(--card-bg); margin-bottom: 8px;
+            padding: 12px; border-radius: 8px;
             border-left: 4px solid var(--accent-occupied);
         }
 
+        /* COMPLETED STATE */
+        .completed-booking {
+            border-left-color: var(--accent-warning) !important;
+            opacity: 0.6;
+        }
+
         .gap-row {
-            background: rgba(255, 255, 255, 0.05);
-            margin: 8px 0;
-            padding: 8px;
-            border-radius: 8px;
-            border: 1px dashed #444;
-            color: var(--text-muted);
-            font-style: italic;
-            font-size: 0.85rem;
-            text-align: center;
+            background: rgba(255, 255, 255, 0.05); margin: 8px 0;
+            padding: 8px; border-radius: 8px; border: 1px dashed #444;
+            color: var(--text-muted); font-style: italic; font-size: 0.85rem; text-align: center;
         }
 
         .booking-info { font-weight: 600; font-size: 1rem; display: block; margin-bottom: 4px; }
@@ -157,7 +107,6 @@
             flex-direction: column; backdrop-filter: blur(10px);
         }
         #pass-modal input { background: #2a2a2a; border: 1px solid #444; color: white; padding: 15px; font-size: 1.5rem; text-align: center; border-radius: 8px; margin-bottom: 20px; outline: none; }
-        #pass-modal button { background: var(--accent-warning); color: white; border: none; padding: 12px 30px; border-radius: 8px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -172,14 +121,13 @@
     </div>
 
     <div id="bookings-view" class="view-content">
-        <div class="bookings-grid" id="bookings-list">
-            </div>
+        <div class="bookings-grid" id="bookings-list"></div>
     </div>
 
     <div id="pass-modal">
         <div style="color: white; margin-bottom: 20px; letter-spacing: 2px;">KIOSK LOCKED</div>
         <input type="password" id="pin-input" placeholder="••••" maxlength="4" inputmode="numeric">
-        <button onclick="checkPin()">UNLOCK DEVICE</button>
+        <button onclick="checkPin()" style="background: var(--accent-warning); color: white; border: none; padding: 12px 30px; border-radius: 8px; font-weight: bold; cursor: pointer;">UNLOCK DEVICE</button>
     </div>
 
     <script>
@@ -189,17 +137,13 @@
         const ADMIN_PIN = "1234";
 
         let facilityState = {}; 
-        LOCATIONS.forEach(loc => {
-            facilityState[loc] = { targetDate: null, isOccupied: false, allEvents: [] };
-        });
+        LOCATIONS.forEach(loc => { facilityState[loc] = { targetDate: null, isOccupied: false, allEvents: [] }; });
 
         function switchTab(tab) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.view-content').forEach(view => view.classList.remove('active'));
-            
             const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.innerText.toLowerCase().includes(tab.replace('view','')));
             if(activeBtn) activeBtn.classList.add('active');
-            
             document.getElementById(`${tab}-view`).classList.add('active');
             if(tab === 'bookings') renderBookings();
         }
@@ -220,25 +164,18 @@
         }
 
         async function fetchAllCalendars() {
-            const startOfDay = new Date();
-            startOfDay.setHours(0,0,0,0);
-            const endOfDay = new Date();
-            endOfDay.setHours(23,59,59,999);
-
+            const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+            const endOfDay = new Date(); endOfDay.setHours(23,59,59,999);
             const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?key=${API_KEY}&timeMin=${startOfDay.toISOString()}&timeMax=${endOfDay.toISOString()}&singleEvents=true&orderBy=startTime`;
-
             try {
                 const response = await fetch(url);
                 const data = await response.json();
                 const events = data.items || [];
-
                 LOCATIONS.forEach(loc => {
                     const locEvents = events.filter(e => (e.summary || "").toLowerCase().includes(loc.toLowerCase()));
                     processLocationData(loc, locEvents);
                 });
-                
                 if(document.getElementById('bookings-view').classList.contains('active')) renderBookings();
-                
             } catch (e) { console.error("Sync Error:", e); }
         }
 
@@ -246,13 +183,10 @@
             const now = new Date();
             const id = loc.replace(/\s+/g, '');
             facilityState[loc].allEvents = events;
-
             const current = events.find(e => new Date(e.start.dateTime || e.start.date) <= now && new Date(e.end.dateTime || e.end.date) > now);
             const upcoming = events.find(e => new Date(e.start.dateTime || e.start.date) > now);
-
             const card = document.getElementById(`card-${id}`);
             if(!card) return;
-
             const titleEl = document.getElementById(`title-${id}`);
             const rangeEl = document.getElementById(`range-${id}`);
             const timeOpt = { hour: 'numeric', minute: '2-digit' };
@@ -296,6 +230,7 @@
 
         function renderBookings() {
             const list = document.getElementById('bookings-list');
+            const now = new Date();
             let html = '';
             const timeOpt = { hour: '2-digit', minute: '2-digit' };
 
@@ -309,6 +244,9 @@
                     events.forEach((event, index) => {
                         const start = new Date(event.start.dateTime || event.start.date);
                         const end = new Date(event.end.dateTime || event.end.date);
+                        
+                        // Check if booking is completed (past end time)
+                        const isCompleted = now > end;
 
                         if (index > 0) {
                             const prevEnd = new Date(events[index-1].end.dateTime || events[index-1].end.date);
@@ -319,7 +257,7 @@
                         }
 
                         html += `
-                            <div class="booking-row">
+                            <div class="booking-row ${isCompleted ? 'completed-booking' : ''}">
                                 <span class="booking-info">${event.summary}</span>
                                 <span class="booking-time">${start.toLocaleTimeString([], timeOpt)} - ${end.toLocaleTimeString([], timeOpt)}</span>
                             </div>
