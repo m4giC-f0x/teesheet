@@ -2,142 +2,438 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bay 3 Monitor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Bay 2 Monitor">
+    
+    <title>Bay 2 Monitor</title>
     <style>
-        body { background-color: #121212; color: #ffffff; font-family: -apple-system, Helvetica, Arial, sans-serif; margin: 0; padding: 0; text-align: center; }
-        .card { background-color: #1e1e1e; border: 5px solid #333; border-radius: 30px; margin: 5vh auto; padding: 40px; width: 85%; max-width: 800px; }
-        .occupied { border-color: #96cb39; }
-        .idle { border-color: #cf6679; }
-        .label { color: #a0a0a0; font-weight: bold; letter-spacing: 3px; text-transform: uppercase; font-size: 1.2rem; }
-        .title { font-size: 3.5rem; margin: 20px 0; font-weight: bold; }
-        .timer-box { background-color: #000; border-radius: 20px; padding: 40px; margin: 25px 0; }
-        .timer-text { font-size: 7rem; font-weight: bold; line-height: 1; color: #cf6679; }
-        .occupied .timer-text { color: #96cb39; }
-        #debug { color: #444; font-size: 0.7rem; margin-top: 10px; }
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-main: #ffffff;
+            --text-muted: #a0a0a0;
+            --accent-idle: #cf6679; /* Red for "Session Complete" */
+            --accent-occupied: #96cb39; /* Your specific Green */
+            --accent-warning: #cf6679; /* Red for warning/Up Next */
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            overflow: hidden; /* Prevents scrolling */
+            position: fixed; /* Fixes "bounce" scrolling on older iPads */
+            touch-action: none; 
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .dashboard-card {
+            background-color: var(--card-bg);
+            padding: 30px 50px; 
+            border-radius: 24px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.5);
+            text-align: center;
+            width: 95%;
+            max-width: 850px;
+            transition: border-color 0.5s, transform 0.3s;
+            border: 2px solid transparent;
+            z-index: 1;
+        }
+
+        .logo-container {
+            margin-top: -10px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: center;
+            min-height: auto;
+        }
+
+        .logo-container img {
+            max-height: 180px;
+            max-width: 450px;  
+            object-fit: contain;
+        }
+
+        /* Border State Classes */
+        .dashboard-card.occupied-state { border-color: var(--accent-occupied); }
+        .dashboard-card.warning-state { border-color: var(--accent-warning); }
+        .dashboard-card.idle-state { border-color: var(--accent-idle); }
+
+        .label {
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .event-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin: 0 0 15px 0;
+            line-height: 1.1;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .timer-container {
+            background: rgba(0,0,0,0.2);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 25px 0; 
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .timer {
+            font-size: 6.5rem; 
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -2px;
+            line-height: 1;
+            transition: color 0.3s, font-size 0.3s;
+        }
+
+        .sub-timer {
+            margin-top: 10px;
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            min-height: 1.2rem;
+        }
+
+        .event-time {
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .status-dot {
+            height: 16px;
+            width: 16px;
+            background-color: var(--accent-idle);
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 10px var(--accent-idle);
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+
+        .error-msg { color: #cf6679; font-size: 0.9rem; margin-top: 20px; display: none; }
+        .occupied-dot { background-color: var(--accent-occupied); box-shadow: 0 0 15px var(--accent-occupied); }
+        .warning-dot { background-color: var(--accent-warning); box-shadow: 0 0 15px var(--accent-warning); }
+
+        /* Kiosk Password Modal */
+        #pass-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+        }
+        #pass-modal input {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            color: white;
+            padding: 15px;
+            font-size: 1.5rem;
+            text-align: center;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        #pass-modal button {
+            background: var(--accent-warning);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
-    <div id="main-card" class="card idle">
-        <div id="top-label" class="label">Status</div>
-        <div id="event-title" class="title">Syncing...</div>
+    <div class="dashboard-card" id="main-card">
+        <div class="logo-container">
+            <img src="https://m4gic-f0x.github.io/teesheet/b9.png" id="app-logo" alt="Logo" onerror="this.style.display='none'">
+        </div>
+
+        <div class="label" id="top-label">Initializing...</div>
+        <div class="event-title" id="event-title">---</div>
         
-        <div class="timer-box">
-            <div id="timer-display" class="timer-text">00:00</div>
-            <div id="sub-label" class="label" style="margin-top:10px;">Connecting to Bay 3</div>
+        <div class="timer-container">
+            <div class="timer" id="timer">00:00:00</div>
+            <div class="sub-timer" id="timer-label">Syncing</div>
+        </div>
+
+        <div class="event-time" id="event-time-footer">
+            <span class="status-dot" id="status-dot"></span>
+            <span id="time-range">Establishing Connection...</span>
         </div>
         
-        <div id="debug">System Start...</div>
+        <div class="error-msg" id="error-box"></div>
     </div>
 
-    <script type="text/javascript">
-        // Global Variables using VAR for legacy support
-        var API_KEY = 'AIzaSyDHxd0Ms4jv6qXcBu0Od9vm3B1IeniOtTo';
-        var CALENDAR_ID = 'c_49229d9cac9c5624fe5d288c9356e492658134943d61459600373109dbf8379b@group.calendar.google.com';
-        var TARGET_TIME = null;
+    <div id="pass-modal">
+        <div class="label" style="color: white; margin-bottom: 20px;">Kiosk Locked - Enter PIN</div>
+        <input type="password" id="pin-input" placeholder="••••" maxlength="4" inputmode="numeric">
+        <div style="display: flex; gap: 10px;">
+            <button onclick="checkPin()">Unlock & Fullscreen</button>
+        </div>
+    </div>
 
-        function setLog(txt) {
-            document.getElementById('debug').innerHTML = "Log: " + txt;
+    <script>
+        const API_KEY = 'AIzaSyDHxd0Ms4jv6qXcBu0Od9vm3B1IeniOtTo';
+        const CALENDAR_ID = 'c_49229d9cac9c5624fe5d288c9356e492658134943d61459600373109dbf8379b@group.calendar.google.com';
+        const SEARCH_TERM = "Bay 2"; 
+        const ADMIN_PIN = "1234";
+
+        let currentTargetDate = null;
+        let isFetching = false; 
+        let lastFetchTime = 0;
+        let isInternalUnlock = false;
+        let isOccupied = false;
+        let isUpNext = false;
+
+        let chimePlayed10 = false;
+        let chimePlayed5 = false;
+        let chimePlayed0 = false;
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playChime(freq = 880) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(freq / 2, audioCtx.currentTime + 0.5);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.5);
         }
 
-        function getData() {
-            setLog("Fetching...");
-            // Manual date string for iOS 12 compatibility
-            var d = new Date();
-            var nowStr = d.getUTCFullYear() + "-" + ("0" + (d.getUTCMonth() + 1)).slice(-2) + "-" + ("0" + d.getUTCDate()).slice(-2) + "T" + ("0" + d.getUTCHours()).slice(-2) + ":" + ("0" + d.getUTCMinutes()).slice(-2) + ":00Z";
-            
-            var url = "https://www.googleapis.com/calendar/v3/calendars/" + encodeURIComponent(CALENDAR_ID) + 
-                      "/events?key=" + API_KEY + "&timeMin=" + nowStr + 
-                      "&singleEvents=true&orderBy=startTime&maxResults=5";
+        // Kiosk Triple-Tap Detection
+        let tapCount = 0;
+        let tapTimer = null;
+        document.body.addEventListener('touchstart', (e) => {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            if(document.getElementById('pass-modal').style.display === 'flex') return;
+            tapCount++;
+            if (tapTimer) clearTimeout(tapTimer);
+            if (tapCount === 3) { handleKioskToggle(); tapCount = 0; }
+            else { tapTimer = setTimeout(() => { tapCount = 0; }, 400); }
+        });
 
-            var xhr = new XMLHttpRequest();
-            xhr.open("GET", url, true);
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4) {
-                    if (xhr.status === 200) {
-                        setLog("Data Received");
-                        var resp = JSON.parse(xhr.responseText);
-                        parseEvents(resp.items || []);
-                    } else {
-                        setLog("API Error: " + xhr.status);
-                    }
-                }
-            };
-            xhr.send();
-        }
+        const fsEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
+        fsEvents.forEach(evt => document.addEventListener(evt, handleExitDetection));
 
-        function parseEvents(items) {
-            var now = new Date();
-            var found = null;
-
-            for (var i = 0; i < items.length; i++) {
-                if (items[i].summary.toLowerCase().indexOf("bay 3") !== -1) {
-                    found = items[i];
-                    break;
-                }
+        function handleExitDetection() {
+            if (!isFullscreen() && !isInternalUnlock) {
+                document.getElementById('pass-modal').style.display = 'flex';
+                document.getElementById('pin-input').focus();
             }
+        }
 
-            var card = document.getElementById('main-card');
-            var title = document.getElementById('event-title');
-            var sub = document.getElementById('sub-label');
-
-            if (found) {
-                var start = new Date(found.start.dateTime || found.start.date);
-                var end = new Date(found.end.dateTime || found.end.date);
-
-                if (now >= start && now < end) {
-                    // OCCUPIED
-                    card.className = "card occupied";
-                    title.innerHTML = found.summary;
-                    sub.innerHTML = "Time Remaining";
-                    TARGET_TIME = end;
-                } else if ((start - now) < 600000 && (start - now) > 0) {
-                    // UP NEXT (10 mins)
-                    card.className = "card idle";
-                    title.innerHTML = found.summary;
-                    sub.innerHTML = "Starts In";
-                    TARGET_TIME = start;
-                } else {
-                    showComplete();
-                }
+        function isFullscreen() { return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement); }
+        function handleKioskToggle() { if (!isFullscreen()) enterFullscreen(); else document.getElementById('pass-modal').style.display = 'flex'; }
+        function enterFullscreen() { const docEl = document.documentElement; const request = docEl.requestFullscreen || docEl.webkitRequestFullScreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen; if (request) request.call(docEl); }
+        
+        function checkPin() {
+            const input = document.getElementById('pin-input');
+            if (input.value === ADMIN_PIN) {
+                isInternalUnlock = true; closeModal(); enterFullscreen();
+                setTimeout(() => { isInternalUnlock = false; }, 1000);
             } else {
-                showComplete();
+                input.value = ""; input.placeholder = "WRONG";
+                setTimeout(() => { input.placeholder = "••••"; }, 1000);
+            }
+        }
+        function closeModal() { document.getElementById('pass-modal').style.display = 'none'; document.getElementById('pin-input').value = ""; }
+
+        async function fetchCalendar() {
+            if (isFetching) return;
+            const nowTime = Date.now();
+            if (nowTime - lastFetchTime < 2000) return;
+            isFetching = true;
+            lastFetchTime = nowTime;
+
+            const nowISO = new Date().toISOString();
+            const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?key=${API_KEY}&timeMin=${nowISO}&singleEvents=true&orderBy=startTime&q=${encodeURIComponent(SEARCH_TERM)}&maxResults=5`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
+
+                let validEvent = data.items ? data.items.find(event => (event.summary || "").toLowerCase().includes(SEARCH_TERM.toLowerCase())) : null;
+
+                if (validEvent) processEvent(validEvent);
+                else handleNoEvents();
+                
+                document.getElementById('error-box').style.display = 'none';
+            } catch (error) {
+                document.getElementById('error-box').innerText = "Network Error: Retrying...";
+                document.getElementById('error-box').style.display = 'block';
+            } finally {
+                isFetching = false;
             }
         }
 
-        function showComplete() {
-            TARGET_TIME = null;
-            document.getElementById('main-card').className = "card idle";
-            document.getElementById('event-title').innerHTML = "Bay 3";
-            document.getElementById('timer-display').innerHTML = "SESSION COMPLETE";
-            document.getElementById('timer-display').style.fontSize = "4.5rem";
-            document.getElementById('sub-label').innerHTML = "";
+        function setUIState(state) {
+            const mainCard = document.getElementById('main-card');
+            const statusDot = document.getElementById('status-dot');
+            const timerDisplay = document.getElementById('timer');
+
+            mainCard.classList.remove('occupied-state', 'warning-state', 'idle-state');
+            statusDot.classList.remove('occupied-dot', 'warning-dot');
+
+            if (state === 'occupied') {
+                mainCard.classList.add('occupied-state');
+                statusDot.classList.add('occupied-dot');
+                timerDisplay.style.color = "var(--accent-occupied)";
+                timerDisplay.style.fontSize = "8rem";
+            } else if (state === 'warning') {
+                mainCard.classList.add('warning-state');
+                statusDot.classList.add('warning-dot');
+                timerDisplay.style.color = "var(--accent-warning)";
+                timerDisplay.style.fontSize = "8rem";
+            } else {
+                // Session Complete State
+                mainCard.classList.add('idle-state'); 
+                statusDot.classList.add('warning-dot');
+                timerDisplay.style.color = "var(--accent-idle)";
+                timerDisplay.style.fontSize = "5.5rem"; 
+            }
         }
 
-        function runTimer() {
-            if (!TARGET_TIME) return;
+        function processEvent(event) {
+            const title = event.summary;
+            let start = new Date(event.start.dateTime || event.start.date);
+            let end = new Date(event.end.dateTime || event.end.date);
+            const now = new Date();
+            const topLabel = document.getElementById('top-label');
+            const timerLabel = document.getElementById('timer-label');
+            const eventTitle = document.getElementById('event-title');
+            const footer = document.getElementById('event-time-footer');
             
-            var diff = TARGET_TIME - new Date();
-            if (diff <= 0) {
-                TARGET_TIME = null;
-                getData();
+            const diffToStart = start - now;
+
+            // Scenario 1: Active Booking
+            if (now >= start && now < end) {
+                isOccupied = true;
+                isUpNext = false;
+                currentTargetDate = end;
+                topLabel.innerText = "CURRENTLY OCCUPIED";
+                timerLabel.innerText = "Time Remaining";
+                eventTitle.innerText = title;
+                footer.style.visibility = "visible";
+                setUIState('occupied');
+            } 
+            // Scenario 2: Warning / Up Next (Starts within 10 minutes)
+            else if (diffToStart > 0 && diffToStart <= 600000) {
+                isOccupied = false;
+                isUpNext = true;
+                currentTargetDate = start;
+                topLabel.innerText = "UP NEXT";
+                timerLabel.innerText = "Starts In";
+                eventTitle.innerText = title;
+                footer.style.visibility = "visible";
+                setUIState('warning');
+            } 
+            // Scenario 3: Free / Session Complete
+            else {
+                handleNoEvents();
                 return;
             }
 
-            var m = Math.floor(diff / 60000);
-            var s = Math.floor((diff % 60000) / 1000);
-            
-            document.getElementById('timer-display').innerHTML = (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
-            document.getElementById('timer-display').style.fontSize = "7rem";
+            const timeOpt = { hour: 'numeric', minute: '2-digit' };
+            document.getElementById('time-range').innerText = `${start.toLocaleTimeString([], timeOpt)} - ${end.toLocaleTimeString([], timeOpt)}`;
+            updateTimer();
         }
 
-        // Start Logic
-        getData();
-        setInterval(runTimer, 1000);
-        setInterval(getData, 45000);
+        function handleNoEvents() {
+            currentTargetDate = null;
+            isOccupied = false;
+            isUpNext = false;
+            
+            document.getElementById('top-label').innerText = "STATUS";
+            document.getElementById('event-title').innerText = "Bay 2";
+            document.getElementById('timer').innerText = "SESSION COMPLETE";
+            document.getElementById('timer-label').innerText = ""; 
+            document.getElementById('event-time-footer').style.visibility = "hidden"; 
+            
+            setUIState('idle');
+            
+            chimePlayed10 = false;
+            chimePlayed5 = false;
+            chimePlayed0 = false;
+        }
+
+        function updateTimer() {
+            if (!currentTargetDate) return;
+
+            const now = new Date();
+            const diff = currentTargetDate - now;
+            
+            if (diff <= 0) {
+                document.getElementById('timer').innerText = "00:00:00";
+                if (isOccupied && !chimePlayed0) {
+                    playChime(440); 
+                    chimePlayed0 = true;
+                }
+                fetchCalendar();
+                return;
+            }
+
+            if (isOccupied) {
+                if (diff <= 300000 && !chimePlayed5) { playChime(1100); chimePlayed5 = true; }
+                else if (diff <= 600000 && !chimePlayed10) { playChime(880); chimePlayed10 = true; }
+                
+                if (diff <= 600000) setUIState('warning');
+                else setUIState('occupied');
+            }
+
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            let displayTime = "";
+            if (hours > 0) displayTime += `${hours.toString().padStart(2, '0')}:`;
+            displayTime += `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            document.getElementById('timer').innerText = displayTime;
+        }
+
+        fetchCalendar();
+        setInterval(updateTimer, 1000);
+        setInterval(fetchCalendar, 60000); 
 
     </script>
 </body>
 </html>
-
