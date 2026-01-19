@@ -2,188 +2,96 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bay 2 Monitor</title>
     <style>
-        body { 
-            background-color: #121212; 
-            color: #ffffff; 
-            font-family: -apple-system, sans-serif;
-            margin: 0; padding: 0;
-            display: flex; justify-content: center; align-items: center;
-            height: 100vh; width: 100vw; overflow: hidden;
-            position: fixed;
-        }
-        .dashboard-card {
-            background-color: #1e1e1e;
-            padding: 40px; 
-            border-radius: 24px;
-            text-align: center;
-            width: 85%;
-            max-width: 800px;
-            border: 4px solid #333;
-        }
-        /* State Colors - Hardcoded for reliability */
-        .occupied-state { border-color: #96cb39 !important; }
-        .warning-state { border-color: #cf6679 !important; }
-        .idle-state { border-color: #cf6679 !important; }
-
-        .label { font-size: 1.2rem; color: #a0a0a0; letter-spacing: 4px; margin-bottom: 10px; font-weight: bold; }
-        .event-title { font-size: 3.5rem; margin: 10px 0; font-weight: bold; }
-        .timer-container { background: #000; border-radius: 20px; padding: 30px; margin: 20px 0; }
-        .timer { font-size: 7rem; font-weight: bold; line-height: 1; }
-        .sub-timer { font-size: 1.2rem; color: #a0a0a0; margin-top: 10px; height: 1.5rem; }
-        .footer { font-size: 1.5rem; color: #a0a0a0; margin-top: 20px; }
-        .dot { height: 15px; width: 15px; border-radius: 50%; display: inline-block; margin-right: 10px; background: #555; }
-        
-        #pass-modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 999;
-            flex-direction: column; justify-content: center; align-items: center;
-        }
-        img { max-height: 150px; margin-bottom: 20px; }
+        body { background-color: #121212; color: #ffffff; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; overflow: hidden; }
+        .dashboard-card { background-color: #1e1e1e; padding: 40px; border-radius: 24px; border: 4px solid #333; display: inline-block; width: 90%; max-width: 800px; margin-top: 5vh; }
+        .timer { font-size: 6rem; font-weight: bold; margin: 20px 0; color: #cf6679; }
+        .label { color: #a0a0a0; letter-spacing: 3px; font-weight: bold; text-transform: uppercase; }
+        #debug-log { color: #555; font-size: 0.8rem; margin-top: 20px; font-family: monospace; }
+        .occupied { border-color: #96cb39 !important; }
+        .occupied #timer { color: #96cb39 !important; }
     </style>
 </head>
 <body>
 
     <div id="main-card" class="dashboard-card">
-        <img src="https://m4gic-f0x.github.io/teesheet/b9.png" alt="Logo">
-        <div id="top-label" class="label">STATUS</div>
-        <div id="event-title" class="event-title">Loading...</div>
+        <div class="label" id="top-label">Status</div>
+        <div id="event-title" style="font-size: 3rem; font-weight: bold;">Loading API...</div>
         
-        <div class="timer-container">
-            <div id="timer" class="timer">00:00</div>
-            <div id="timer-label" class="sub-timer">CONNECTING</div>
-        </div>
+        <div id="timer" class="timer">--:--</div>
+        <div id="timer-label" class="label">Connecting...</div>
 
-        <div id="footer" class="footer">
-            <span id="dot" class="dot"></span>
-            <span id="time-range">Please Wait...</span>
-        </div>
-    </div>
-
-    <div id="pass-modal">
-        <div class="label" style="color:white">PIN REQUIRED</div>
-        <input type="password" id="pin-input" style="font-size:2rem; width:200px; text-align:center; margin:20px;">
-        <button onclick="checkPin()" style="padding:10px 30px; font-size:1.5rem;">Unlock</button>
+        <div id="debug-log">Log: Waiting for script...</div>
     </div>
 
     <script>
-        // ES5 Syntax only (No const, let, =>, or `template strings`)
+        // Log function to see errors on the iPad screen
+        function log(msg) {
+            document.getElementById('debug-log').innerText = "Log: " + msg;
+        }
+
         var API_KEY = 'AIzaSyDHxd0Ms4jv6qXcBu0Od9vm3B1IeniOtTo';
         var CALENDAR_ID = 'c_49229d9cac9c5624fe5d288c9356e492658134943d61459600373109dbf8379b@group.calendar.google.com';
-        var SEARCH_TERM = "Bay 2";
         
-        var currentTargetDate = null;
-        var isOccupied = false;
-
-        // AJAX Request (Old school compatibility)
         function fetchCalendar() {
-            var nowISO = new Date().toISOString();
+            log("Attempting to contact Google...");
             var url = "https://www.googleapis.com/calendar/v3/calendars/" + encodeURIComponent(CALENDAR_ID) + 
-                      "/events?key=" + API_KEY + "&timeMin=" + nowISO + 
-                      "&singleEvents=true&orderBy=startTime&q=" + encodeURIComponent(SEARCH_TERM) + "&maxResults=3";
+                      "/events?key=" + API_KEY + "&timeMin=" + new Date().toISOString() + 
+                      "&singleEvents=true&orderBy=startTime&maxResults=3";
 
             var xhr = new XMLHttpRequest();
             xhr.open("GET", url, true);
+            
             xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4 && xhr.status === 200) {
-                    var data = JSON.parse(xhr.responseText);
-                    var items = data.items || [];
-                    var found = null;
-                    for (var i = 0; i < items.length; i++) {
-                        if (items[i].summary.toLowerCase().indexOf(SEARCH_TERM.toLowerCase()) !== -1) {
-                            found = items[i];
-                            break;
-                        }
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        log("Success! Data received.");
+                        var data = JSON.parse(xhr.responseText);
+                        updateUI(data.items || []);
+                    } else {
+                        log("Error: " + xhr.status + " (Check Internet/SSL)");
                     }
-                    if (found) { processEvent(found); } 
-                    else { handleNoEvents(); }
                 }
             };
+
+            xhr.onerror = function() {
+                log("Network Failed. Check iPad Date/Time or SSL Trust.");
+            };
+
             xhr.send();
         }
 
-        function processEvent(event) {
-            var now = new Date();
-            var start = new Date(event.start.dateTime || event.start.date);
-            var end = new Date(event.end.dateTime || event.end.date);
-            var card = document.getElementById('main-card');
-            var timerEl = document.getElementById('timer');
-            
-            if (now >= start && now < end) {
-                // Currently Occupied
-                isOccupied = true;
-                currentTargetDate = end;
-                card.className = "dashboard-card occupied-state";
-                document.getElementById('top-label').innerText = "CURRENTLY OCCUPIED";
-                document.getElementById('timer-label').innerText = "TIME REMAINING";
-                timerEl.style.color = "#96cb39";
-                document.getElementById('footer').style.visibility = "visible";
-            } else if ((start - now) < 600000 && (start - now) > 0) {
-                // Up Next (within 10 mins)
-                isOccupied = false;
-                currentTargetDate = start;
-                card.className = "dashboard-card warning-state";
-                document.getElementById('top-label').innerText = "UP NEXT";
-                document.getElementById('timer-label').innerText = "STARTS IN";
-                timerEl.style.color = "#cf6679";
-                document.getElementById('footer').style.visibility = "visible";
+        function updateUI(items) {
+            var found = null;
+            for (var i = 0; i < items.length; i++) {
+                if (items[i].summary.toLowerCase().indexOf("bay 2") !== -1) {
+                    found = items[i];
+                    break;
+                }
+            }
+
+            if (found) {
+                var start = new Date(found.start.dateTime || found.start.date);
+                document.getElementById('event-title').innerText = found.summary;
+                document.getElementById('timer-label').innerText = "Upcoming Session";
+                document.getElementById('timer').innerText = start.getHours() + ":" + (start.getMinutes()<10?'0':'') + start.getMinutes();
             } else {
-                handleNoEvents();
-                return;
-            }
-
-            document.getElementById('event-title').innerText = event.summary;
-            document.getElementById('time-range').innerText = start.getHours() + ":" + (start.getMinutes()<10?'0':'') + start.getMinutes() + " - " + end.getHours() + ":" + (end.getMinutes()<10?'0':'') + end.getMinutes();
-        }
-
-        function handleNoEvents() {
-            currentTargetDate = null;
-            document.getElementById('main-card').className = "dashboard-card idle-state";
-            document.getElementById('top-label').innerText = "STATUS";
-            document.getElementById('event-title').innerText = "Bay 2";
-            document.getElementById('timer').innerText = "SESSION COMPLETE";
-            document.getElementById('timer').style.color = "#cf6679";
-            document.getElementById('timer').style.fontSize = "5rem";
-            document.getElementById('timer-label').innerText = "";
-            document.getElementById('footer').style.visibility = "hidden";
-        }
-
-        function updateTimer() {
-            if (!currentTargetDate) return;
-            var diff = currentTargetDate - new Date();
-            if (diff <= 0) { fetchCalendar(); return; }
-
-            var h = Math.floor(diff / 3600000);
-            var m = Math.floor((diff % 3600000) / 60000);
-            var s = Math.floor((diff % 60000) / 1000);
-            
-            var timeStr = (h > 0 ? h + ":" : "") + (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
-            document.getElementById('timer').innerText = timeStr;
-            document.getElementById('timer').style.fontSize = "7rem";
-        }
-
-        // Tap logic for PIN
-        var taps = 0;
-        document.body.addEventListener('touchstart', function() {
-            taps++;
-            setTimeout(function() { taps = 0; }, 1000);
-            if (taps >= 3) { document.getElementById('pass-modal').style.display = 'flex'; }
-        });
-
-        function checkPin() {
-            if (document.getElementById('pin-input').value === "1234") {
-                document.getElementById('pass-modal').style.display = 'none';
+                document.getElementById('event-title').innerText = "Bay 2";
+                document.getElementById('timer').innerText = "READY";
+                document.getElementById('timer-label').innerText = "No active sessions";
             }
         }
 
-        // Start
-        fetchCalendar();
-        setInterval(updateTimer, 1000);
-        setInterval(fetchCalendar, 30000);
+        // Initialize
+        try {
+            log("Script started.");
+            fetchCalendar();
+            setInterval(fetchCalendar, 30000);
+        } catch(e) {
+            log("Critical Script Error: " + e.message);
+        }
     </script>
 </body>
 </html>
