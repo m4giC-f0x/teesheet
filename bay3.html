@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bay 2 Monitor</title>
+    <title>Bay 3 Monitor</title>
     <style>
         body { background-color: #121212; color: #ffffff; font-family: -apple-system, Helvetica, Arial, sans-serif; margin: 0; padding: 0; text-align: center; }
         .card { background-color: #1e1e1e; border: 5px solid #333; border-radius: 30px; margin: 5vh auto; padding: 40px; width: 85%; max-width: 800px; }
@@ -25,7 +25,7 @@
         
         <div class="timer-box">
             <div id="timer-display" class="timer-text">00:00</div>
-            <div id="sub-label" class="label" style="margin-top:10px;">Connecting to Bay 2</div>
+            <div id="sub-label" class="label" style="margin-top:10px;">Connecting to Bay 3</div>
         </div>
         
         <div id="debug">System Start...</div>
@@ -72,7 +72,7 @@
             var found = null;
 
             for (var i = 0; i < items.length; i++) {
-                if (items[i].summary.toLowerCase().indexOf("bay 2") !== -1) {
+                if (items[i].summary.toLowerCase().indexOf("bay 3") !== -1) {
                     found = items[i];
                     break;
                 }
@@ -109,7 +109,7 @@
         function showComplete() {
             TARGET_TIME = null;
             document.getElementById('main-card').className = "card idle";
-            document.getElementById('event-title').innerHTML = "Bay 2";
+            document.getElementById('event-title').innerHTML = "Bay 3";
             document.getElementById('timer-display').innerHTML = "SESSION COMPLETE";
             document.getElementById('timer-display').style.fontSize = "4.5rem";
             document.getElementById('sub-label').innerHTML = "";
@@ -140,3 +140,4 @@
     </script>
 </body>
 </html>
+
