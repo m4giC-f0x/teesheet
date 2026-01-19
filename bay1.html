@@ -2,34 +2,42 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Bay 1 Monitor">
+    
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    
     <title>Bay 1 Monitor</title>
+    
     <style>
+        /* CSS Update for Full Screen / No Scroll */
         :root {
             --bg-color: #121212;
             --card-bg: #1e1e1e;
             --text-main: #ffffff;
             --text-muted: #a0a0a0;
-            --accent-idle: #03dac6; /* Teal for "Available" */
-            --accent-occupied: #96cb39; /* Your specific Green */
-            --accent-warning: #cf6679; /* Red for warning */
+            --accent-idle: #03dac6;
+            --accent-occupied: #96cb39;
+            --accent-warning: #cf6679;
         }
 
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
+            width: 100vw;
             margin: 0;
-            padding: 0; /* Removed padding to maximize space */
-            box-sizing: border-box;
-            overflow: hidden;
-            position: relative;
-            touch-action: manipulation;
-            user-select: none;
+            padding: 0;
+            overflow: hidden; /* Strict no-scroll */
+            position: fixed; /* Prevents "bounce" scrolling on iOS */
+            touch-action: none; 
             -webkit-user-select: none;
         }
 
