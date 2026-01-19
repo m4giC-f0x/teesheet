@@ -5,66 +5,72 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bay 2 Monitor</title>
     <style>
-        body { background-color: #121212; color: #ffffff; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; overflow: hidden; }
-        .dashboard-card { background-color: #1e1e1e; padding: 40px; border-radius: 24px; border: 4px solid #333; display: inline-block; width: 90%; max-width: 800px; margin-top: 5vh; }
-        .timer { font-size: 6rem; font-weight: bold; margin: 20px 0; color: #cf6679; }
-        .label { color: #a0a0a0; letter-spacing: 3px; font-weight: bold; text-transform: uppercase; }
-        #debug-log { color: #555; font-size: 0.8rem; margin-top: 20px; font-family: monospace; }
-        .occupied { border-color: #96cb39 !important; }
-        .occupied #timer { color: #96cb39 !important; }
+        body { background-color: #121212; color: #ffffff; font-family: -apple-system, Helvetica, Arial, sans-serif; margin: 0; padding: 0; text-align: center; }
+        .card { background-color: #1e1e1e; border: 5px solid #333; border-radius: 30px; margin: 5vh auto; padding: 40px; width: 85%; max-width: 800px; }
+        .occupied { border-color: #96cb39; }
+        .idle { border-color: #cf6679; }
+        .label { color: #a0a0a0; font-weight: bold; letter-spacing: 3px; text-transform: uppercase; font-size: 1.2rem; }
+        .title { font-size: 3.5rem; margin: 20px 0; font-weight: bold; }
+        .timer-box { background-color: #000; border-radius: 20px; padding: 40px; margin: 25px 0; }
+        .timer-text { font-size: 7rem; font-weight: bold; line-height: 1; color: #cf6679; }
+        .occupied .timer-text { color: #96cb39; }
+        #debug { color: #444; font-size: 0.7rem; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div id="main-card" class="dashboard-card">
-        <div class="label" id="top-label">Status</div>
-        <div id="event-title" style="font-size: 3rem; font-weight: bold;">Loading API...</div>
+    <div id="main-card" class="card idle">
+        <div id="top-label" class="label">Status</div>
+        <div id="event-title" class="title">Syncing...</div>
         
-        <div id="timer" class="timer">--:--</div>
-        <div id="timer-label" class="label">Connecting...</div>
-
-        <div id="debug-log">Log: Waiting for script...</div>
+        <div class="timer-box">
+            <div id="timer-display" class="timer-text">00:00</div>
+            <div id="sub-label" class="label" style="margin-top:10px;">Connecting to Bay 2</div>
+        </div>
+        
+        <div id="debug">System Start...</div>
     </div>
 
-    <script>
-        // Log function to see errors on the iPad screen
-        function log(msg) {
-            document.getElementById('debug-log').innerText = "Log: " + msg;
-        }
-
+    <script type="text/javascript">
+        // Global Variables using VAR for legacy support
         var API_KEY = 'AIzaSyDHxd0Ms4jv6qXcBu0Od9vm3B1IeniOtTo';
         var CALENDAR_ID = 'c_49229d9cac9c5624fe5d288c9356e492658134943d61459600373109dbf8379b@group.calendar.google.com';
-        
-        function fetchCalendar() {
-            log("Attempting to contact Google...");
+        var TARGET_TIME = null;
+
+        function setLog(txt) {
+            document.getElementById('debug').innerHTML = "Log: " + txt;
+        }
+
+        function getData() {
+            setLog("Fetching...");
+            // Manual date string for iOS 12 compatibility
+            var d = new Date();
+            var nowStr = d.getUTCFullYear() + "-" + ("0" + (d.getUTCMonth() + 1)).slice(-2) + "-" + ("0" + d.getUTCDate()).slice(-2) + "T" + ("0" + d.getUTCHours()).slice(-2) + ":" + ("0" + d.getUTCMinutes()).slice(-2) + ":00Z";
+            
             var url = "https://www.googleapis.com/calendar/v3/calendars/" + encodeURIComponent(CALENDAR_ID) + 
-                      "/events?key=" + API_KEY + "&timeMin=" + new Date().toISOString() + 
-                      "&singleEvents=true&orderBy=startTime&maxResults=3";
+                      "/events?key=" + API_KEY + "&timeMin=" + nowStr + 
+                      "&singleEvents=true&orderBy=startTime&maxResults=5";
 
             var xhr = new XMLHttpRequest();
             xhr.open("GET", url, true);
-            
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4) {
                     if (xhr.status === 200) {
-                        log("Success! Data received.");
-                        var data = JSON.parse(xhr.responseText);
-                        updateUI(data.items || []);
+                        setLog("Data Received");
+                        var resp = JSON.parse(xhr.responseText);
+                        parseEvents(resp.items || []);
                     } else {
-                        log("Error: " + xhr.status + " (Check Internet/SSL)");
+                        setLog("API Error: " + xhr.status);
                     }
                 }
             };
-
-            xhr.onerror = function() {
-                log("Network Failed. Check iPad Date/Time or SSL Trust.");
-            };
-
             xhr.send();
         }
 
-        function updateUI(items) {
+        function parseEvents(items) {
+            var now = new Date();
             var found = null;
+
             for (var i = 0; i < items.length; i++) {
                 if (items[i].summary.toLowerCase().indexOf("bay 2") !== -1) {
                     found = items[i];
@@ -72,26 +78,65 @@
                 }
             }
 
+            var card = document.getElementById('main-card');
+            var title = document.getElementById('event-title');
+            var sub = document.getElementById('sub-label');
+
             if (found) {
                 var start = new Date(found.start.dateTime || found.start.date);
-                document.getElementById('event-title').innerText = found.summary;
-                document.getElementById('timer-label').innerText = "Upcoming Session";
-                document.getElementById('timer').innerText = start.getHours() + ":" + (start.getMinutes()<10?'0':'') + start.getMinutes();
+                var end = new Date(found.end.dateTime || found.end.date);
+
+                if (now >= start && now < end) {
+                    // OCCUPIED
+                    card.className = "card occupied";
+                    title.innerHTML = found.summary;
+                    sub.innerHTML = "Time Remaining";
+                    TARGET_TIME = end;
+                } else if ((start - now) < 600000 && (start - now) > 0) {
+                    // UP NEXT (10 mins)
+                    card.className = "card idle";
+                    title.innerHTML = found.summary;
+                    sub.innerHTML = "Starts In";
+                    TARGET_TIME = start;
+                } else {
+                    showComplete();
+                }
             } else {
-                document.getElementById('event-title').innerText = "Bay 2";
-                document.getElementById('timer').innerText = "READY";
-                document.getElementById('timer-label').innerText = "No active sessions";
+                showComplete();
             }
         }
 
-        // Initialize
-        try {
-            log("Script started.");
-            fetchCalendar();
-            setInterval(fetchCalendar, 30000);
-        } catch(e) {
-            log("Critical Script Error: " + e.message);
+        function showComplete() {
+            TARGET_TIME = null;
+            document.getElementById('main-card').className = "card idle";
+            document.getElementById('event-title').innerHTML = "Bay 2";
+            document.getElementById('timer-display').innerHTML = "SESSION COMPLETE";
+            document.getElementById('timer-display').style.fontSize = "4.5rem";
+            document.getElementById('sub-label').innerHTML = "";
         }
+
+        function runTimer() {
+            if (!TARGET_TIME) return;
+            
+            var diff = TARGET_TIME - new Date();
+            if (diff <= 0) {
+                TARGET_TIME = null;
+                getData();
+                return;
+            }
+
+            var m = Math.floor(diff / 60000);
+            var s = Math.floor((diff % 60000) / 1000);
+            
+            document.getElementById('timer-display').innerHTML = (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+            document.getElementById('timer-display').style.fontSize = "7rem";
+        }
+
+        // Start Logic
+        getData();
+        setInterval(runTimer, 1000);
+        setInterval(getData, 45000);
+
     </script>
 </body>
 </html>
